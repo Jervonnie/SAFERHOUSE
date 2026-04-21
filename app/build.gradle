@@ -2,6 +2,7 @@ plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
     id 'kotlin-kapt'
+    id 'org.jetbrains.kotlin.plugin.serialization'
 }
 
 android {
@@ -33,6 +34,7 @@ android {
     }
     buildFeatures {
         viewBinding true
+        buildConfig true
     }
 }
 
@@ -47,6 +49,15 @@ dependencies {
     implementation "androidx.room:room-runtime:$room_version"
     implementation "androidx.room:room-ktx:$room_version"
     kapt "androidx.room:room-compiler:$room_version"
+
+    // Supabase & Ktor
+    implementation "io.ktor:ktor-client-cio:2.3.7"
+    implementation "io.github.jan-tennert.supabase:postgrest-kt:2.0.0"
+    implementation "io.github.jan-tennert.supabase:gotrue-kt:2.0.0"
+    implementation "io.github.jan-tennert.supabase:realtime-kt:2.0.0"
+    implementation "io.ktor:ktor-client-android:2.3.7"
+    implementation "io.ktor:ktor-client-core:2.3.7"
+    implementation "org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0"
 
     // Lifecycle
     implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.7.0'

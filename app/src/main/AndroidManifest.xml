@@ -38,6 +38,8 @@
             android:exported="false"
             android:foregroundServiceType="location|microphone|connectedDevice" />
 
+        <receiver android:name=".utils.HealthCheckManager$CheckInReceiver" android:exported="false" />
+
     </application>
 
 </manifest>

@@ -8,27 +8,54 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.jervs.saferhouse.MainActivity
 import com.jervs.saferhouse.R
+import com.jervs.saferhouse.utils.AudioDetector
+import com.jervs.saferhouse.utils.BatteryMonitor
+import com.jervs.saferhouse.utils.EmergencyManager
+import com.jervs.saferhouse.utils.HealthCheckManager
 import kotlin.math.sqrt
 
 class EmergencyMonitoringService : Service(), SensorEventListener {
 
     private lateinit var sensorManager: SensorManager
     private var accelerometer: Sensor? = null
+    private lateinit var emergencyManager: EmergencyManager
+    private lateinit var audioDetector: AudioDetector
+    private lateinit var batteryMonitor: BatteryMonitor
+    private lateinit var healthCheckManager: HealthCheckManager
     
-    // Simple fall detection threshold (will be refined in Phase 5)
-    private val FALL_THRESHOLD = 30.0f 
+    // Fall Detection Thresholds
+    private val IMPACT_THRESHOLD = 30.0f // High acceleration (impact)
+    private val LAYING_THRESHOLD = 2.0f   // Low acceleration (laying still)
+    private var isWaitingForInactivity = false
+    private val handler = Handler(Looper.getMainLooper())
 
     override fun onCreate() {
         super.onCreate()
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+        emergencyManager = EmergencyManager(this)
+        batteryMonitor = BatteryMonitor(this)
+        healthCheckManager = HealthCheckManager(this)
+        
+        audioDetector = AudioDetector(this) {
+            Log.d("EmergencyService", "Keyword detected! Triggering emergency...")
+            triggerAlertSequence()
+        }
         
         startForegroundService()
         registerSensors()
+        audioDetector.startListening()
+        batteryMonitor.startMonitoring()
+        
+        // Schedule a default health check-in (e.g., 9:00 AM)
+        healthCheckManager.scheduleDailyCheckIn(9, 0)
     }
 
     private fun startForegroundService() {
@@ -72,14 +99,30 @@ class EmergencyMonitoringService : Service(), SensorEventListener {
             val z = event.values[2]
 
             val acceleration = sqrt(x * x + y * y + z * z)
-            if (acceleration > FALL_THRESHOLD) {
-                handlePotentialFall()
+            
+            if (!isWaitingForInactivity && acceleration > IMPACT_THRESHOLD) {
+                Log.d("FallDetection", "Impact detected: $acceleration")
+                isWaitingForInactivity = true
+                checkInactivity()
             }
         }
     }
 
-    private fun handlePotentialFall() {
-        // Logic for confirmation screen (Phase 6)
+    private fun checkInactivity() {
+        // Wait for 5 seconds to see if the user is still/inactive
+        handler.postDelayed({
+            // In a real scenario, we'd check if the user is moving again
+            // For now, if no movement cancels it, we trigger alert
+            triggerAlertSequence()
+            isWaitingForInactivity = false
+        }, 5000) 
+    }
+
+    private fun triggerAlertSequence() {
+        Log.d("FallDetection", "Triggering Alert Sequence")
+        // This will be linked to the Confirmation UI (Phase 6)
+        // For now, it calls the EmergencyManager directly
+        emergencyManager.triggerEmergency()
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
@@ -89,5 +132,7 @@ class EmergencyMonitoringService : Service(), SensorEventListener {
     override fun onDestroy() {
         super.onDestroy()
         sensorManager.unregisterListener(this)
+        audioDetector.stopListening()
+        batteryMonitor.stopMonitoring()
     }
 }
