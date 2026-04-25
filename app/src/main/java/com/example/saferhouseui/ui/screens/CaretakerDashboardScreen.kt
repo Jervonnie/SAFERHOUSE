@@ -6,9 +6,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.input.KeyboardType
@@ -47,6 +45,7 @@ fun CaretakerDashboardScreen(
     caretakerAddress: String,
     caretakerContact: String,
     managedElders: List<ElderlyMember>,
+    onUpdateProfile: (String, String, String) -> Unit,
     onAddElder: (String) -> Unit,
     onLogout: () -> Unit
 ) {
@@ -69,10 +68,21 @@ fun CaretakerDashboardScreen(
                 onNavigateToSettings = { currentScreen = "settings" },
                 onNavigateToCallList = { currentScreen = "call_list" },
                 onNavigateToManagement = { currentScreen = "elder_management" },
+                onNavigateToEditProfile = { currentScreen = "edit_profile" },
                 onLogClick = { log ->
                     selectedLog = log
                     logBackDestination = "dashboard"
                     currentScreen = "log_detail"
+                }
+            )
+            "edit_profile" -> EditCaretakerProfileContent(
+                initialName = caretakerName,
+                initialAddress = caretakerAddress,
+                initialContact = caretakerContact,
+                onBack = { currentScreen = "dashboard" },
+                onSave = { name, address, contact ->
+                    onUpdateProfile(name, address, contact)
+                    currentScreen = "dashboard"
                 }
             )
             "logs" -> ActivityLogsContent(
@@ -122,8 +132,6 @@ fun CaretakerDashboardScreen(
             )
             "settings" -> SettingsContent(
                 name = caretakerName,
-                address = caretakerAddress,
-                contact = caretakerContact,
                 managedElders = managedElders,
                 onAddElder = onAddElder,
                 onBack = { currentScreen = "dashboard" },
@@ -152,6 +160,7 @@ fun DashboardContent(
     onNavigateToSettings: () -> Unit,
     onNavigateToCallList: () -> Unit,
     onNavigateToManagement: () -> Unit,
+    onNavigateToEditProfile: () -> Unit,
     onLogClick: (LogData) -> Unit
 ) {
     Scaffold(
@@ -231,9 +240,38 @@ fun DashboardContent(
                     Spacer(modifier = Modifier.width(18.dp))
 
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(text = name, color = Color.Black, fontWeight = FontWeight.Black, fontSize = 20.sp)
+                        Text(
+                            text = name, 
+                            color = Color.Black, 
+                            fontWeight = FontWeight.Black, 
+                            fontSize = 20.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                         Text(text = "CARETAKER", color = PrimaryTeal, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 1.sp)
-                        Text(text = address, color = Color.Gray, fontSize = 12.sp, maxLines = 1)
+                        Text(
+                            text = address, 
+                            color = Color.Gray, 
+                            fontSize = 12.sp, 
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    IconButton(
+                        onClick = onNavigateToEditProfile,
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(PrimaryTeal.copy(alpha = 0.1f), CircleShape)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Edit Profile",
+                            tint = PrimaryTeal,
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
                 }
             }
@@ -846,8 +884,6 @@ fun ModernLogTile(log: LogData, onClick: () -> Unit) {
 @Composable
 fun SettingsContent(
     name: String,
-    address: String,
-    contact: String,
     managedElders: List<ElderlyMember>,
     onAddElder: (String) -> Unit,
     onBack: () -> Unit,
@@ -999,7 +1035,7 @@ fun SettingsContent(
             onClick = onLogout,
             modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp)
         ) {
-            Text("Disconnect Session", color = Color(0xFFFF4B4B), fontWeight = FontWeight.Bold)
+            Text("Logout", color = Color(0xFFFF4B4B), fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -1095,4 +1131,131 @@ fun SettingsTile(icon: ImageVector, title: String, value: String, onClick: () ->
             Text(text = value, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium)
         }
     }
+}
+
+@Composable
+fun EditCaretakerProfileContent(
+    initialName: String,
+    initialAddress: String,
+    initialContact: String,
+    onBack: () -> Unit,
+    onSave: (String, String, String) -> Unit
+) {
+    var name by remember { mutableStateOf(initialName) }
+    var address by remember { mutableStateOf(initialAddress) }
+    var contact by remember { mutableStateOf(initialContact) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .padding(horizontal = 25.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier.background(Color.White.copy(alpha = 0.05f), CircleShape)
+            ) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = PrimaryTeal)
+            }
+            Spacer(modifier = Modifier.width(15.dp))
+            Text(text = "Edit Profile", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        }
+
+        Surface(
+            modifier = Modifier.fillMaxWidth().weight(1f),
+            color = Color.White.copy(alpha = 0.05f),
+            shape = RoundedCornerShape(topStart = 80.dp, bottomEnd = 80.dp, topEnd = 20.dp, bottomStart = 20.dp),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
+        ) {
+            Column(
+                modifier = Modifier.padding(30.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(100.dp)
+                        .clip(RoundedCornerShape(30.dp))
+                        .background(PrimaryTeal.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.Person, contentDescription = null, tint = PrimaryTeal, modifier = Modifier.size(50.dp))
+                }
+
+                Spacer(modifier = Modifier.height(40.dp))
+
+                SleekInputFieldWhite(
+                    value = name,
+                    onValueChange = { name = it },
+                    placeholder = "Full Name",
+                    icon = Icons.Default.Badge
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                SleekInputFieldWhite(
+                    value = address,
+                    onValueChange = { address = it },
+                    placeholder = "Home Address",
+                    icon = Icons.Default.Home
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                SleekInputFieldWhite(
+                    value = contact,
+                    onValueChange = { 
+                        if (it.all { char -> char.isDigit() }) {
+                            contact = it
+                        }
+                    },
+                    placeholder = "Contact Number",
+                    icon = Icons.Default.Phone
+                )
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                Button(
+                    onClick = { onSave(name, address, contact) },
+                    modifier = Modifier.fillMaxWidth().height(60.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal),
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Text("UPDATE IDENTITY", fontWeight = FontWeight.ExtraBold, color = Color.White)
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(30.dp))
+    }
+}
+
+@Composable
+fun SleekInputFieldWhite(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    icon: ImageVector
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = Modifier.fillMaxWidth(),
+        placeholder = { Text(text = placeholder, color = Color.White.copy(alpha = 0.3f)) },
+        leadingIcon = { Icon(imageVector = icon, contentDescription = null, tint = PrimaryTeal) },
+        shape = RoundedCornerShape(16.dp),
+        singleLine = true,
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = PrimaryTeal,
+            unfocusedBorderColor = Color.White.copy(alpha = 0.1f),
+            focusedTextColor = Color.White,
+            unfocusedTextColor = Color.White,
+            cursorColor = PrimaryTeal,
+            focusedContainerColor = Color.White.copy(alpha = 0.05f),
+            unfocusedContainerColor = Color.White.copy(alpha = 0.05f)
+        )
+    )
 }

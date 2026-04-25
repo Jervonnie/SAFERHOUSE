@@ -63,7 +63,11 @@ fun AppNavigation(userViewModel: UserViewModel) {
                 onNavigateToDashboard = { email ->
                     val user = userViewModel.users.find { it.email == email }
                     if (user != null) {
-                        val route = if (user.role == "helper") "caretaker_dashboard" else "login"
+                        val route = when (user.role) {
+                            "helper" -> "caretaker_dashboard"
+                            "elder" -> "elderly_dashboard"
+                            else -> "role" // Redirect to role selection if profile is incomplete
+                        }
                         navController.navigate(route) {
                             popUpTo("login") { inclusive = true }
                         }
@@ -113,11 +117,28 @@ fun AppNavigation(userViewModel: UserViewModel) {
                     caretakerAddress = user.address,
                     caretakerContact = user.contact,
                     managedElders = user.managedElders,
+                    onUpdateProfile = { name, address, contact ->
+                        userViewModel.updateProfile(name, address, contact)
+                    },
                     onAddElder = { name -> userViewModel.addElderlyMember(name) },
                     onLogout = {
                         userViewModel.logout()
                         navController.navigate("login") {
                             popUpTo("caretaker_dashboard") { inclusive = true }
+                        }
+                    }
+                )
+            }
+        }
+        composable("elderly_dashboard") {
+            currentUser?.let { user ->
+                ElderlyDashboardScreen(
+                    elderName = user.name,
+                    caretakerName = "Juan Dela Cruz", // Mock for now
+                    onLogout = {
+                        userViewModel.logout()
+                        navController.navigate("login") {
+                            popUpTo("elderly_dashboard") { inclusive = true }
                         }
                     }
                 )

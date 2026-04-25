@@ -47,6 +47,8 @@ fun LoginScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    val welcomeText = if (userViewModel.isReturningUser) "WELCOME BACK" else "WELCOME"
+                    
                     Text(
                         text = "SaferHouse",
                         color = PrimaryTeal,
@@ -55,7 +57,7 @@ fun LoginScreen(
                         letterSpacing = (-1).sp
                     )
                     Text(
-                        text = "WELCOME BACK",
+                        text = welcomeText,
                         color = Color.White.copy(alpha = 0.7f),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Light,
