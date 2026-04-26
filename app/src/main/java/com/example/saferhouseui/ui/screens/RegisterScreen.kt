@@ -17,6 +17,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.saferhouseui.ui.theme.*
 
+import androidx.compose.ui.res.stringResource
+import com.example.saferhouseui.R
+
 @Composable
 fun RegisterScreen(
     onNavigateToLogin: () -> Unit,
@@ -28,6 +31,10 @@ fun RegisterScreen(
     var passwordError by remember { mutableStateOf(false) }
     var emailError by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
+
+    val invalidEmailMsg = stringResource(R.string.invalid_email)
+    val passwordShortMsg = stringResource(R.string.password_too_short)
+    val passwordMismatchMsg = stringResource(R.string.passwords_do_not_match)
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -49,14 +56,14 @@ fun RegisterScreen(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "SaferHouse",
+                        text = stringResource(R.string.app_name),
                         color = PrimaryTeal,
                         fontSize = 48.sp,
                         fontWeight = FontWeight.ExtraBold,
                         letterSpacing = (-1).sp
                     )
                     Text(
-                        text = "SECURITY · SAFETY · PEACE",
+                        text = stringResource(R.string.security_safety_peace),
                         color = PrimaryTeal.copy(alpha = 0.6f),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
@@ -85,13 +92,13 @@ fun RegisterScreen(
                         verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
                         Text(
-                            text = "Join the",
+                            text = stringResource(R.string.join_the),
                             color = Color.Black.copy(alpha = 0.8f),
                             fontSize = 34.sp,
                             fontWeight = FontWeight.Light
                         )
                         Text(
-                            text = "SafeHouse",
+                            text = stringResource(R.string.safehouse),
                             color = PrimaryTeal,
                             fontSize = 38.sp,
                             fontWeight = FontWeight.Black
@@ -108,7 +115,7 @@ fun RegisterScreen(
                             emailError = false
                             errorMessage = ""
                         },
-                        placeholder = "Email Address",
+                        placeholder = stringResource(R.string.email_address),
                         icon = Icons.Default.Email,
                         isError = emailError
                     )
@@ -122,7 +129,7 @@ fun RegisterScreen(
                             passwordError = false 
                             errorMessage = ""
                         },
-                        placeholder = "Password",
+                        placeholder = stringResource(R.string.password),
                         icon = Icons.Default.Lock,
                         isPassword = true,
                         isError = passwordError
@@ -137,7 +144,7 @@ fun RegisterScreen(
                             passwordError = false 
                             errorMessage = ""
                         },
-                        placeholder = "Confirm Password",
+                        placeholder = stringResource(R.string.confirm_password),
                         icon = Icons.Default.Lock,
                         isPassword = true,
                         isError = passwordError
@@ -164,13 +171,13 @@ fun RegisterScreen(
                             val emailPattern = android.util.Patterns.EMAIL_ADDRESS
                             if (email.isEmpty() || !emailPattern.matcher(email).matches()) {
                                 emailError = true
-                                errorMessage = "Please enter a valid email address"
+                                errorMessage = invalidEmailMsg
                             } else if (password.length < 8) {
                                 passwordError = true
-                                errorMessage = "Password must be at least 8 characters"
+                                errorMessage = passwordShortMsg
                             } else if (password != confirmPassword) {
                                 passwordError = true
-                                errorMessage = "Passwords do not match"
+                                errorMessage = passwordMismatchMsg
                             } else {
                                 onUserCreated(email, password)
                             }
@@ -183,7 +190,7 @@ fun RegisterScreen(
                         elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
                     ) {
                         Text(
-                            text = "CREATE ACCOUNT",
+                            text = stringResource(R.string.create_account).uppercase(),
                             color = Color.White,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
@@ -201,7 +208,7 @@ fun RegisterScreen(
                     )
                      {
                         Text(
-                            text = "Already a member? ",
+                            text = stringResource(R.string.already_a_member) + " ",
                             color = Color.Gray,
                             fontSize = 14.sp
                         )
@@ -210,7 +217,7 @@ fun RegisterScreen(
                             contentPadding = PaddingValues(horizontal = 4.dp)
                         ) {
                             Text(
-                                text = "Sign In",
+                                text = stringResource(R.string.sign_in),
                                 color = PrimaryTeal,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold

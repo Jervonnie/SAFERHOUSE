@@ -1,31 +1,80 @@
 package com.example.saferhouseui
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.runtime.Composable
+import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.saferhouseui.ui.screens.*
+import com.example.saferhouseui.ui.theme.PrimaryTeal
 import com.example.saferhouseui.ui.theme.SaferHouseUITheme
 
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.saferhouseui.viewmodel.UserViewModel
+import com.example.saferhouseui.viewmodel.AuthViewModel
+import com.example.saferhouseui.viewmodel.CaretakerViewModel
+import com.example.saferhouseui.viewmodel.UserPreferenceViewModel
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
+            val prefViewModel: UserPreferenceViewModel = viewModel()
+            val authViewModel: AuthViewModel = viewModel()
+            val caretakerViewModel: CaretakerViewModel = viewModel(
+                factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                    @Suppress("UNCHECKED_CAST")
+                    override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                        return CaretakerViewModel(authViewModel) as T
+                    }
+                }
+            )
+
             SaferHouseUITheme {
-                val userViewModel: UserViewModel = viewModel()
-                AppNavigation(userViewModel)
+                Box {
+                    AppNavigation(
+                        prefViewModel = prefViewModel,
+                        authViewModel = authViewModel,
+                        caretakerViewModel = caretakerViewModel
+                    )
+                    
+                    if (prefViewModel.isLoading) {
+                        LoadingOverlay()
+                    }
+                }
             }
+        }
+    }
+}
+
+@Composable
+fun LoadingOverlay() {
+    Dialog(
+        onDismissRequest = {},
+        properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(100.dp)
+                .background(Color.Black.copy(alpha = 0.8f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(color = PrimaryTeal)
         }
     }
 }
@@ -44,6 +93,7 @@ data class UserProfile(
 data class ElderlyMember(
     val id: String,
     val name: String,
+    val address: String = "",
     val phoneNumber: String = "09XXXXXXXXX",
     val batteryLevel: Int = 100,
     val status: String = "Safe",
@@ -51,22 +101,29 @@ data class ElderlyMember(
 )
 
 @Composable
-fun AppNavigation(userViewModel: UserViewModel) {
+fun AppNavigation(
+    prefViewModel: UserPreferenceViewModel,
+    authViewModel: AuthViewModel,
+    caretakerViewModel: CaretakerViewModel
+) {
     val navController = rememberNavController()
-    val currentUser = userViewModel.currentUser
+    val currentUser = authViewModel.currentUser
+
+    // Listen to changes in currentUser to reactively update navigation if needed
+    // but usually handled by manual navigation calls.
 
     NavHost(navController = navController, startDestination = "login") {
         composable("login") {
             LoginScreen(
-                userViewModel = userViewModel,
+                authViewModel = authViewModel,
                 onNavigateToRegister = { navController.navigate("register") },
                 onNavigateToDashboard = { email ->
-                    val user = userViewModel.users.find { it.email == email }
+                    val user = authViewModel.users.find { it.email == email }
                     if (user != null) {
                         val route = when (user.role) {
                             "helper" -> "caretaker_dashboard"
                             "elder" -> "elderly_dashboard"
-                            else -> "role" // Redirect to role selection if profile is incomplete
+                            else -> "role"
                         }
                         navController.navigate(route) {
                             popUpTo("login") { inclusive = true }
@@ -79,7 +136,7 @@ fun AppNavigation(userViewModel: UserViewModel) {
             RegisterScreen(
                 onNavigateToLogin = { navController.navigate("login") },
                 onUserCreated = { email: String, password: String ->
-                    userViewModel.register(email, password)
+                    authViewModel.register(email, password)
                     navController.navigate("role")
                 }
             )
@@ -88,8 +145,10 @@ fun AppNavigation(userViewModel: UserViewModel) {
             RoleScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToNext = { role ->
-                    userViewModel.updateRole(role)
-                    navController.navigate("setup/$role")
+                    caretakerViewModel.updateRole(role)
+                    navController.navigate("setup/$role") {
+                        popUpTo("role") { inclusive = true }
+                    }
                 }
             )
         }
@@ -102,8 +161,8 @@ fun AppNavigation(userViewModel: UserViewModel) {
                 role = role,
                 onNavigateBack = { navController.popBackStack() },
                 onComplete = { name, address, contact ->
-                    userViewModel.updateProfile(name, address, contact)
-                    userViewModel.logout()
+                    caretakerViewModel.updateProfile(name, address, contact)
+                    authViewModel.logout()
                     navController.navigate("login") {
                         popUpTo(0) { inclusive = true }
                     }
@@ -117,12 +176,18 @@ fun AppNavigation(userViewModel: UserViewModel) {
                     caretakerAddress = user.address,
                     caretakerContact = user.contact,
                     managedElders = user.managedElders,
+                    currentLanguage = prefViewModel.language,
+                    currentFontSize = prefViewModel.fontSize,
+                    onLanguageChange = { prefViewModel.setAppLanguage(it) },
+                    onFontSizeChange = { prefViewModel.setAppFontSize(it) },
                     onUpdateProfile = { name, address, contact ->
-                        userViewModel.updateProfile(name, address, contact)
+                        caretakerViewModel.updateProfile(name, address, contact)
                     },
-                    onAddElder = { name -> userViewModel.addElderlyMember(name) },
+                    onAddElder = { name, address, contact -> 
+                        caretakerViewModel.addElderlyMember(name, address, contact) 
+                    },
                     onLogout = {
-                        userViewModel.logout()
+                        authViewModel.logout()
                         navController.navigate("login") {
                             popUpTo("caretaker_dashboard") { inclusive = true }
                         }
@@ -134,9 +199,15 @@ fun AppNavigation(userViewModel: UserViewModel) {
             currentUser?.let { user ->
                 ElderlyDashboardScreen(
                     elderName = user.name,
+                    elderAddress = user.address,
+                    elderContact = user.contact,
                     caretakerName = "Juan Dela Cruz", // Mock for now
+                    currentLanguage = prefViewModel.language,
+                    currentFontSize = prefViewModel.fontSize,
+                    onLanguageChange = { prefViewModel.setAppLanguage(it) },
+                    onFontSizeChange = { prefViewModel.setAppFontSize(it) },
                     onLogout = {
-                        userViewModel.logout()
+                        authViewModel.logout()
                         navController.navigate("login") {
                             popUpTo("elderly_dashboard") { inclusive = true }
                         }
