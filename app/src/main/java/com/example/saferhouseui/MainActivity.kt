@@ -187,8 +187,8 @@ fun AppNavigation(
                     onUpdateProfile = { name, address, contact ->
                         caretakerViewModel.updateProfile(name, address, contact)
                     },
-                    onAddElder = { name, address, contact -> 
-                        caretakerViewModel.addElderlyMember(name, address, contact) 
+                    onAddElder = { code -> 
+                        caretakerViewModel.assignElderByCode(code)
                     },
                     onLogout = {
                         authViewModel.logout()

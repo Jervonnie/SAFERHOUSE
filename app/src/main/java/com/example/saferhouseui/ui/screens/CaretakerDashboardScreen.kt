@@ -60,7 +60,7 @@ fun CaretakerDashboardScreen(
     currentFontSize: String,
     onFontSizeChange: (String) -> Unit,
     onUpdateProfile: (String, String, String) -> Unit,
-    onAddElder: (String, String, String) -> Unit,
+    onAddElder: (String) -> Unit,
     @Suppress("UNUSED_PARAMETER") onLogout: () -> Unit
 ) {
     var currentScreen by remember { mutableStateOf("dashboard") }
@@ -156,8 +156,8 @@ fun CaretakerDashboardScreen(
             "add_elder" -> AddElderContent(
                 fontScale = fontScale,
                 onBack = { currentScreen = "elder_management" },
-                onAdd = { name, address, contact ->
-                    onAddElder(name, address, contact)
+                onAdd = { code ->
+                    onAddElder(code)
                     currentScreen = "elder_management"
                 }
             )
@@ -746,11 +746,9 @@ fun ElderManagementContent(
 fun AddElderContent(
     fontScale: Float,
     onBack: () -> Unit,
-    onAdd: (String, String, String) -> Unit
+    onAdd: (String) -> Unit
 ) {
-    var name by remember { mutableStateOf("") }
-    var address by remember { mutableStateOf("") }
-    var contact by remember { mutableStateOf("") }
+    var elderCode by remember { mutableStateOf("") }
 
     Column(modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 25.dp)) {
         Row(modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -762,7 +760,7 @@ fun AddElderContent(
         }
         
         Text(
-            text = stringResource(R.string.profile_configuration).uppercase(),
+            text = "LINKING ACCOUNT".uppercase(),
             color = PrimaryTeal,
             fontSize = 11.caretakerScaledSp(fontScale),
             fontWeight = FontWeight.Black,
@@ -778,57 +776,48 @@ fun AddElderContent(
         ) {
             Column(modifier = Modifier.padding(25.dp)) {
                 Text(
-                    text = stringResource(R.string.add_new_elder),
+                    text = "Assign Elder via Code",
                     color = Color.Black,
                     fontSize = 22.caretakerScaledSp(fontScale),
                     fontWeight = FontWeight.ExtraBold
                 )
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = "Enter the unique 6-digit code generated from the Elder's device to link their account to your dashboard.",
+                    color = Color.Gray,
+                    fontSize = 13.caretakerScaledSp(fontScale),
+                    lineHeight = 18.sp
+                )
+                
                 Spacer(modifier = Modifier.height(25.dp))
                 
                 SleekInputField(
-                    value = name,
-                    onValueChange = { name = it },
-                    placeholder = stringResource(R.string.full_name),
-                    icon = Icons.Default.Badge
+                    value = elderCode,
+                    onValueChange = { 
+                        if (it.length <= 6) elderCode = it.uppercase() 
+                    },
+                    placeholder = "Enter Elder Code",
+                    icon = Icons.Default.VpnKey
                 )
                 
-                Spacer(modifier = Modifier.height(18.dp))
-
-                SleekInputField(
-                    value = address,
-                    onValueChange = { address = it },
-                    placeholder = stringResource(R.string.home_address),
-                    icon = Icons.Default.Home
-                )
-
-                Spacer(modifier = Modifier.height(18.dp))
-
-                SleekInputField(
-                    value = contact,
-                    onValueChange = { 
-                        if (it.all { char -> char.isDigit() }) {
-                            contact = it 
-                        }
-                    },
-                    placeholder = stringResource(R.string.contact_number),
-                    icon = Icons.Default.Phone,
-                    keyboardType = KeyboardType.Number
-                )
-
                 Spacer(modifier = Modifier.height(30.dp))
                 
                 Button(
                     onClick = { 
-                        if (name.isNotBlank() && address.isNotBlank() && contact.isNotBlank()) {
-                            onAdd(name, address, contact)
+                        if (elderCode.length == 6) {
+                            onAdd(elderCode)
                         }
                     },
                     modifier = Modifier.fillMaxWidth().height(55.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PrimaryTeal,
+                        disabledContainerColor = Color.LightGray.copy(alpha = 0.4f),
+                        disabledContentColor = Color.Gray
+                    ),
                     shape = RoundedCornerShape(14.dp),
-                    enabled = name.isNotBlank() && address.isNotBlank() && contact.isNotBlank()
+                    enabled = elderCode.length == 6
                 ) {
-                    Text(stringResource(R.string.continue_btn), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.caretakerScaledSp(fontScale))
+                    Text("ASSIGN MEMBER", fontWeight = FontWeight.Bold, fontSize = 16.caretakerScaledSp(fontScale))
                 }
             }
         }
