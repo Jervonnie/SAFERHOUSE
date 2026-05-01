@@ -21,6 +21,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.saferhouseui.ui.theme.*
 
+import androidx.compose.ui.res.stringResource
+import com.example.saferhouseui.R
+
 @Composable
 fun SetupScreen(
     role: String,
@@ -31,7 +34,7 @@ fun SetupScreen(
     var address by remember { mutableStateOf("") }
     var contact by remember { mutableStateOf("") }
 
-    val roleTitle = if (role == "elder") "Elder Setup" else "Caretaker Setup"
+    val roleTitle = if (role == "elder") stringResource(R.string.elder_setup) else stringResource(R.string.caretaker_setup)
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -44,7 +47,7 @@ fun SetupScreen(
                 .navigationBarsPadding(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Header Section
+            // Header Section - Responsive weights
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -53,14 +56,14 @@ fun SetupScreen(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "SaferHouse",
+                        text = stringResource(R.string.app_name),
                         color = PrimaryTeal,
                         fontSize = 42.sp,
                         fontWeight = FontWeight.ExtraBold,
                         letterSpacing = (-1).sp
                     )
                     Text(
-                        text = "PROFILE CONFIGURATION",
+                        text = stringResource(R.string.profile_configuration),
                         color = Color.White.copy(alpha = 0.6f),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
@@ -96,7 +99,7 @@ fun SetupScreen(
                     SleekInputField(
                         value = name,
                         onValueChange = { name = it },
-                        placeholder = "Full Name",
+                        placeholder = stringResource(R.string.full_name),
                         icon = Icons.Default.Badge
                     )
 
@@ -105,7 +108,7 @@ fun SetupScreen(
                     SleekInputField(
                         value = address,
                         onValueChange = { address = it },
-                        placeholder = "Home Address",
+                        placeholder = stringResource(R.string.home_address),
                         icon = Icons.Default.Home
                     )
 
@@ -118,7 +121,7 @@ fun SetupScreen(
                                 contact = it 
                             }
                         },
-                        placeholder = "Contact Number",
+                        placeholder = stringResource(R.string.contact_number),
                         icon = Icons.Default.Phone,
                         keyboardType = KeyboardType.Number
                     )
@@ -126,16 +129,24 @@ fun SetupScreen(
                     Spacer(modifier = Modifier.weight(1f))
 
                     Button(
-                        onClick = { onComplete(name, address, contact) },
+                        onClick = { 
+                            if (name.isNotBlank() && address.isNotBlank() && contact.isNotBlank()) {
+                                onComplete(name, address, contact)
+                            }
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(60.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = PrimaryTeal,
+                            disabledContainerColor = PrimaryTeal.copy(alpha = 0.5f)
+                        ),
                         shape = RoundedCornerShape(16.dp),
-                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp),
+                        enabled = name.isNotBlank() && address.isNotBlank() && contact.isNotBlank()
                     ) {
                         Text(
-                            text = "FINISH SETUP",
+                            text = stringResource(R.string.finish_setup),
                             color = Color.White,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
@@ -147,7 +158,7 @@ fun SetupScreen(
 
                     TextButton(onClick = onNavigateBack) {
                         Text(
-                            text = "Go Back",
+                            text = stringResource(R.string.go_back),
                             color = Color.Gray,
                             fontSize = 14.sp
                         )

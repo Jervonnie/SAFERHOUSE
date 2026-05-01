@@ -14,12 +14,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.saferhouseui.viewmodel.UserViewModel
+import com.example.saferhouseui.viewmodel.AuthViewModel
 import com.example.saferhouseui.ui.theme.*
+
+import androidx.compose.ui.res.stringResource
+import com.example.saferhouseui.R
 
 @Composable
 fun LoginScreen(
-    userViewModel: UserViewModel,
+    authViewModel: AuthViewModel,
     onNavigateToRegister: () -> Unit,
     onNavigateToDashboard: (String) -> Unit
 ) {
@@ -47,10 +50,13 @@ fun LoginScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    val welcomeText = if (userViewModel.isReturningUser) "WELCOME BACK" else "WELCOME"
+                    val welcomeText = if (authViewModel.isReturningUser) 
+                        stringResource(R.string.welcome_back_caps) 
+                    else 
+                        stringResource(R.string.welcome_caps)
                     
                     Text(
-                        text = "SaferHouse",
+                        text = stringResource(R.string.app_name),
                         color = PrimaryTeal,
                         fontSize = 48.sp,
                         fontWeight = FontWeight.ExtraBold,
@@ -81,7 +87,7 @@ fun LoginScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "Sign In",
+                        text = stringResource(R.string.sign_in),
                         color = Color.Black,
                         fontSize = 32.sp,
                         fontWeight = FontWeight.ExtraBold,
@@ -97,7 +103,7 @@ fun LoginScreen(
                             email = it
                             loginError = false
                         },
-                        placeholder = "Email Address",
+                        placeholder = stringResource(R.string.email_address),
                         icon = Icons.Default.Email,
                         isError = loginError
                     )
@@ -110,7 +116,7 @@ fun LoginScreen(
                             password = it
                             loginError = false
                         },
-                        placeholder = "Password",
+                        placeholder = stringResource(R.string.password),
                         icon = Icons.Default.Lock,
                         isPassword = true,
                         isError = loginError
@@ -118,7 +124,7 @@ fun LoginScreen(
 
                     if (loginError) {
                         Text(
-                            text = "Invalid Account",
+                            text = stringResource(R.string.invalid_account),
                             color = Color.Red,
                             fontSize = 12.sp,
                             modifier = Modifier.padding(top = 8.dp).align(Alignment.Start)
@@ -143,7 +149,7 @@ fun LoginScreen(
                                 )
                             )
                             Text(
-                                text = "Keep me logged in",
+                                text = stringResource(R.string.keep_me_logged_in),
                                 color = Color.Gray,
                                 fontSize = 14.sp
                             )
@@ -151,7 +157,7 @@ fun LoginScreen(
 
                         TextButton(onClick = { /* TODO */ }) {
                             Text(
-                                text = "Forgot?",
+                                text = stringResource(R.string.forgot),
                                 color = PrimaryTeal,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold
@@ -163,7 +169,7 @@ fun LoginScreen(
 
                     Button(
                         onClick = { 
-                            if (userViewModel.login(email, password)) {
+                            if (authViewModel.login(email, password)) {
                                 onNavigateToDashboard(email)
                             } else {
                                 loginError = true
@@ -177,7 +183,7 @@ fun LoginScreen(
                         elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
                     ) {
                         Text(
-                            text = "LOGIN",
+                            text = stringResource(R.string.login_btn),
                             color = Color.White,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
@@ -191,13 +197,13 @@ fun LoginScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "New here? ",
+                            text = stringResource(R.string.new_here) + " ",
                             color = Color.Gray,
                             fontSize = 14.sp
                         )
                         TextButton(onClick = onNavigateToRegister, contentPadding = PaddingValues(horizontal = 4.dp)) {
                             Text(
-                                text = "Create Account",
+                                text = stringResource(R.string.create_account),
                                 color = PrimaryTeal,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold

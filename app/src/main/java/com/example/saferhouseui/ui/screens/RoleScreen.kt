@@ -21,6 +21,8 @@ import com.example.saferhouseui.R
 import com.example.saferhouseui.ui.theme.DarkBackground
 import com.example.saferhouseui.ui.theme.PrimaryTeal
 
+import androidx.compose.ui.res.stringResource
+
 @Composable
 fun RoleScreen(
     onNavigateBack: () -> Unit,
@@ -48,14 +50,14 @@ fun RoleScreen(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "Your Role",
+                        text = stringResource(R.string.your_role),
                         color = PrimaryTeal,
                         fontSize = 42.sp,
                         fontWeight = FontWeight.ExtraBold,
                         letterSpacing = (-1).sp
                     )
                     Text(
-                        text = "HOW WILL YOU USE SAFERHOUSE?",
+                        text = stringResource(R.string.how_will_you_use),
                         color = Color.White.copy(alpha = 0.6f),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
@@ -79,7 +81,7 @@ fun RoleScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "Select Profile",
+                        text = stringResource(R.string.select_profile),
                         color = Color.Black,
                         fontSize = 28.sp,
                         fontWeight = FontWeight.ExtraBold,
@@ -94,14 +96,14 @@ fun RoleScreen(
                     ) {
                         ModernRoleCard(
                             modifier = Modifier.weight(1f),
-                            title = "Elderly",
+                            title = stringResource(R.string.elderly),
                             imageRes = R.drawable.elder_mao,
                             isSelected = selectedRole == "elder",
                             onClick = { selectedRole = "elder" }
                         )
                         ModernRoleCard(
                             modifier = Modifier.weight(1f),
-                            title = "Caretaker",
+                            title = stringResource(R.string.caretaker),
                             imageRes = R.drawable.caretaker_lil_rae,
                             isSelected = selectedRole == "helper",
                             onClick = { selectedRole = "helper" }
@@ -124,7 +126,7 @@ fun RoleScreen(
                         elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
                     ) {
                         Text(
-                            text = "CONTINUE",
+                            text = stringResource(R.string.continue_btn),
                             color = Color.White,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
@@ -136,7 +138,7 @@ fun RoleScreen(
 
                     TextButton(onClick = onNavigateBack) {
                         Text(
-                            text = "Go Back",
+                            text = stringResource(R.string.go_back),
                             color = Color.Gray,
                             fontSize = 14.sp
                         )
