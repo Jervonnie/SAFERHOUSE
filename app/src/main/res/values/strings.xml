@@ -53,7 +53,7 @@
     <string name="activity">ACTIVITY</string>
     <string name="phone_number">PHONE NUMBER</string>
     <string name="system_preferences">SYSTEM PREFERENCES</string>
-    <string name="scaling_active">Scaling Active</string>
+    <string name="change_font_size">Change Font Size</string>
     <string name="account_identity">Account Identity</string>
     <string name="full_name">Full Name</string>
     <string name="contact_number">Contact Number</string>

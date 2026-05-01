@@ -182,9 +182,7 @@ fun AppNavigation(
                     caretakerAddress = user.address,
                     caretakerContact = user.contact,
                     managedElders = user.managedElders,
-                    currentLanguage = prefViewModel.language,
                     currentFontSize = prefViewModel.fontSize,
-                    onLanguageChange = { prefViewModel.setAppLanguage(it) },
                     onFontSizeChange = { prefViewModel.setAppFontSize(it) },
                     onUpdateProfile = { name, address, contact ->
                         caretakerViewModel.updateProfile(name, address, contact)

@@ -54,8 +54,6 @@ fun CaretakerDashboardScreen(
     caretakerAddress: String,
     caretakerContact: String,
     managedElders: List<ElderlyMember>,
-    currentLanguage: String,
-    onLanguageChange: (String) -> Unit,
     currentFontSize: String,
     onFontSizeChange: (String) -> Unit,
     onUpdateProfile: (String, String, String) -> Unit,
@@ -69,7 +67,6 @@ fun CaretakerDashboardScreen(
 
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
 
-    var pendingLanguage by remember { mutableStateOf(currentLanguage) }
     var pendingFontSize by remember { mutableStateOf(currentFontSize) }
 
     val fontScale = when (pendingFontSize) {
@@ -178,19 +175,11 @@ fun CaretakerDashboardScreen(
                 managedElders = managedElders,
                 fontScale = fontScale,
                 onBack = { 
-                    if (pendingLanguage != currentLanguage) onLanguageChange(pendingLanguage)
                     if (pendingFontSize != currentFontSize) onFontSizeChange(pendingFontSize)
                     currentScreen = "dashboard" 
                 },
                 onLogout = onLogout,
-                onNavigateToFontSize = { currentScreen = "font_size_selection" },
-                onNavigateToLanguage = { currentScreen = "language_selection" }
-            )
-            "language_selection" -> LanguageSelectionContent(
-                currentLanguage = pendingLanguage,
-                fontScale = fontScale,
-                onLanguageSelected = { pendingLanguage = it },
-                onBack = { currentScreen = "settings" }
+                onNavigateToFontSize = { currentScreen = "font_size_selection" }
             )
             "font_size_selection" -> FontSizeSelectionContent(
                 currentFontSize = pendingFontSize,
@@ -1050,8 +1039,7 @@ fun SettingsContent(
     fontScale: Float,
     onBack: () -> Unit,
     onLogout: () -> Unit,
-    onNavigateToFontSize: () -> Unit,
-    onNavigateToLanguage: () -> Unit
+    onNavigateToFontSize: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 25.dp)) {
         Row(modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1065,8 +1053,7 @@ fun SettingsContent(
         Text(text = stringResource(R.string.system_preferences), color = PrimaryTeal, fontSize = 11.caretakerScaledSp(fontScale), fontWeight = FontWeight.Black, letterSpacing = 2.sp)
         Spacer(modifier = Modifier.height(15.dp))
         
-        SettingsTile(Icons.Default.Language, stringResource(R.string.language), stringResource(R.string.scaling_active), fontScale, onClick = onNavigateToLanguage)
-        SettingsTile(Icons.Default.TextFormat, stringResource(R.string.font_size), stringResource(R.string.scaling_active), fontScale, onClick = onNavigateToFontSize)
+        SettingsTile(Icons.Default.TextFormat, stringResource(R.string.font_size), stringResource(R.string.change_font_size), fontScale, onClick = onNavigateToFontSize)
         SettingsTile(Icons.Default.Person, stringResource(R.string.account_identity), name, fontScale)
         
         Spacer(modifier = Modifier.weight(1f))
@@ -1098,22 +1085,6 @@ fun SettingsTile(icon: ImageVector, title: String, value: String, fontScale: Flo
             Text(text = title, color = Color.White.copy(alpha = 0.5f), fontSize = 11.caretakerScaledSp(fontScale))
             Text(text = value, color = Color.White, fontSize = 15.caretakerScaledSp(fontScale), fontWeight = FontWeight.Medium)
         }
-    }
-}
-
-@Composable
-fun LanguageSelectionContent(currentLanguage: String = "en", fontScale: Float, onLanguageSelected: (String) -> Unit, onBack: () -> Unit) {
-    Column(modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 25.dp)) {
-        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack, modifier = Modifier.background(Color.White.copy(alpha = 0.05f), CircleShape)) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = PrimaryTeal)
-            }
-            Spacer(modifier = Modifier.width(15.dp))
-            Text(text = stringResource(R.string.language), color = Color.White, fontSize = 24.caretakerScaledSp(fontScale), fontWeight = FontWeight.Bold)
-        }
-        LanguageRadioTile("English", currentLanguage == "en", fontScale, onClick = { onLanguageSelected("en") })
-        Spacer(modifier = Modifier.height(15.dp))
-        LanguageRadioTile("Tagalog", currentLanguage == "tl", fontScale, onClick = { onLanguageSelected("tl") })
     }
 }
 
