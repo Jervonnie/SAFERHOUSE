@@ -7,9 +7,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -27,9 +29,15 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.res.stringResource
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.net.Uri
+import android.content.Intent
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.net.toUri
+import coil.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
 import com.example.saferhouseui.ElderlyMember
 import com.example.saferhouseui.R
 import com.example.saferhouseui.ui.theme.DarkBackground
@@ -49,26 +57,33 @@ fun CaretakerDashboardScreen(
     caretakerAddress: String,
     caretakerContact: String,
     managedElders: List<ElderlyMember>,
-    currentLanguage: String,
-    onLanguageChange: (String) -> Unit,
     currentFontSize: String,
     onFontSizeChange: (String) -> Unit,
     onUpdateProfile: (String, String, String) -> Unit,
-    onAddElder: (String, String, String) -> Unit,
-    onLogout: () -> Unit
+    onAddElder: (String) -> Unit,
+    @Suppress("UNUSED_PARAMETER") onLogout: () -> Unit
 ) {
     var currentScreen by remember { mutableStateOf("dashboard") }
     var selectedElderForLogs by remember { mutableStateOf<ElderlyMember?>(null) }
     var selectedLog by remember { mutableStateOf<LogData?>(null) }
     var logBackDestination by remember { mutableStateOf("dashboard") }
 
-    var pendingLanguage by remember { mutableStateOf(currentLanguage) }
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+
     var pendingFontSize by remember { mutableStateOf(currentFontSize) }
 
     val fontScale = when (pendingFontSize) {
         "Small" -> 0.9f
         "Large" -> 1.15f
         else -> 1.0f
+    }
+
+    val context = LocalContext.current
+    val triggerCall = { number: String ->
+        val intent = Intent(Intent.ACTION_DIAL).apply {
+            data = "tel:$number".toUri()
+        }
+        context.startActivity(intent)
     }
 
     Box(modifier = Modifier.fillMaxSize().background(DarkBackground)) {
@@ -78,12 +93,13 @@ fun CaretakerDashboardScreen(
                 address = caretakerAddress,
                 managedElders = managedElders,
                 fontScale = fontScale,
+                selectedImageUri = selectedImageUri,
                 onNavigateToLogs = { 
                     logBackDestination = "dashboard"
                     currentScreen = "logs" 
                 },
                 onNavigateToSettings = { currentScreen = "settings" },
-                onNavigateToCallList = { currentScreen = "call_list" },
+                onNavigateToCallList = { triggerCall("911") },
                 onNavigateToManagement = { currentScreen = "elder_management" },
                 onNavigateToEditProfile = { currentScreen = "edit_profile" },
                 onLogClick = { log ->
@@ -97,6 +113,8 @@ fun CaretakerDashboardScreen(
                 initialAddress = caretakerAddress,
                 initialContact = caretakerContact,
                 fontScale = fontScale,
+                selectedImageUri = selectedImageUri,
+                onImageSelected = { selectedImageUri = it },
                 onBack = { currentScreen = "dashboard" },
                 onSave = { name, address, contact ->
                     onUpdateProfile(name, address, contact)
@@ -117,7 +135,8 @@ fun CaretakerDashboardScreen(
             "call_list" -> CallListContent(
                 managedElders = managedElders,
                 fontScale = fontScale,
-                onBack = { currentScreen = "dashboard" }
+                onBack = { currentScreen = "dashboard" },
+                onCallElder = { number -> triggerCall(number) }
             )
             "elder_management" -> ElderManagementContent(
                 managedElders = managedElders,
@@ -137,15 +156,16 @@ fun CaretakerDashboardScreen(
             "add_elder" -> AddElderContent(
                 fontScale = fontScale,
                 onBack = { currentScreen = "elder_management" },
-                onAdd = { name, address, contact ->
-                    onAddElder(name, address, contact)
+                onAdd = { code ->
+                    onAddElder(code)
                     currentScreen = "elder_management"
                 }
             )
             "elder_profile" -> ElderProfileContent(
                 elder = selectedElderForLogs,
                 fontScale = fontScale,
-                onBack = { currentScreen = "elder_management" }
+                onBack = { currentScreen = "elder_management" },
+                onCallElder = { number -> triggerCall(number) }
             )
             "specific_logs" -> ActivityLogsContent(
                 title = "${selectedElderForLogs?.name}'s History",
@@ -161,26 +181,19 @@ fun CaretakerDashboardScreen(
             "log_detail" -> LogDetailContent(
                 log = selectedLog,
                 fontScale = fontScale,
-                onBack = { currentScreen = logBackDestination }
+                onBack = { currentScreen = logBackDestination },
+                onCallEmergency = { triggerCall("911") }
             )
             "settings" -> SettingsContent(
                 name = caretakerName,
                 managedElders = managedElders,
                 fontScale = fontScale,
                 onBack = { 
-                    if (pendingLanguage != currentLanguage) onLanguageChange(pendingLanguage)
                     if (pendingFontSize != currentFontSize) onFontSizeChange(pendingFontSize)
                     currentScreen = "dashboard" 
                 },
                 onLogout = onLogout,
-                onNavigateToFontSize = { currentScreen = "font_size_selection" },
-                onNavigateToLanguage = { currentScreen = "language_selection" }
-            )
-            "language_selection" -> LanguageSelectionContent(
-                currentLanguage = pendingLanguage,
-                fontScale = fontScale,
-                onLanguageSelected = { pendingLanguage = it },
-                onBack = { currentScreen = "settings" }
+                onNavigateToFontSize = { currentScreen = "font_size_selection" }
             )
             "font_size_selection" -> FontSizeSelectionContent(
                 currentFontSize = pendingFontSize,
@@ -199,8 +212,9 @@ fun Int.caretakerScaledSp(scale: Float): TextUnit = (this * scale).sp
 fun DashboardContent(
     name: String,
     address: String,
-    managedElders: List<ElderlyMember>,
+    @Suppress("UNUSED_PARAMETER") managedElders: List<ElderlyMember>,
     fontScale: Float,
+    selectedImageUri: Uri?,
     onNavigateToLogs: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToCallList: () -> Unit,
@@ -274,12 +288,21 @@ fun DashboardContent(
                             .clip(RoundedCornerShape(15.dp))
                             .background(Color(0xFFF0F0F0))
                     ) {
-                        Icon(
-                            Icons.Default.Person, 
-                            contentDescription = null, 
-                            tint = Color.Gray, 
-                            modifier = Modifier.fillMaxSize().padding(10.dp)
-                        )
+                        if (selectedImageUri != null) {
+                            AsyncImage(
+                                model = selectedImageUri,
+                                contentDescription = "Profile Picture",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Icon(
+                                Icons.Default.Person,
+                                contentDescription = null,
+                                tint = Color.Gray,
+                                modifier = Modifier.fillMaxSize().padding(10.dp)
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.width(18.dp))
@@ -328,9 +351,9 @@ fun DashboardContent(
                 DashboardActionButton(
                     modifier = Modifier.weight(1f),
                     title = stringResource(R.string.call_member),
-                    subtitle = "${managedElders.size} ${stringResource(R.string.connected)}",
+                    subtitle = stringResource(R.string.emergency_hotline),
                     icon = Icons.Default.Call,
-                    color = PrimaryTeal,
+                    color = Color(0xFFFF4B4B),
                     fontScale = fontScale,
                     onClick = onNavigateToCallList
                 )
@@ -418,7 +441,8 @@ fun DashboardActionButton(
 fun LogDetailContent(
     log: LogData?,
     fontScale: Float,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onCallEmergency: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -556,6 +580,20 @@ fun LogDetailContent(
 
                 Spacer(modifier = Modifier.height(25.dp))
 
+                if (log?.color == Color.Red) {
+                    Button(
+                        onClick = onCallEmergency,
+                        modifier = Modifier.fillMaxWidth().height(60.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF4B4B)),
+                        shape = RoundedCornerShape(25.dp)
+                    ) {
+                        Icon(Icons.Default.Call, contentDescription = null, tint = Color.White)
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(stringResource(R.string.call_emergency_btn), color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 14.caretakerScaledSp(fontScale))
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
                 Button(
                     onClick = onBack,
                     modifier = Modifier.fillMaxWidth().height(60.dp),
@@ -617,7 +655,7 @@ fun IndustrialLogTile(
 }
 
 @Composable
-fun CallListContent(managedElders: List<ElderlyMember>, fontScale: Float, onBack: () -> Unit) {
+fun CallListContent(@Suppress("UNUSED_PARAMETER") managedElders: List<ElderlyMember>, fontScale: Float, onBack: () -> Unit, onCallElder: (String) -> Unit) {
     Column(modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 25.dp)) {
         Row(modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack, modifier = Modifier.background(Color.White.copy(alpha = 0.05f), CircleShape)) {
@@ -644,7 +682,7 @@ fun CallListContent(managedElders: List<ElderlyMember>, fontScale: Float, onBack
                             Text(text = elder.status, color = if(elder.status == "Safe") PrimaryTeal else Color.Red, fontSize = 12.caretakerScaledSp(fontScale))
                         }
                         IconButton(
-                            onClick = { /* Trigger Call */ },
+                            onClick = { onCallElder(elder.phoneNumber) },
                             modifier = Modifier.background(PrimaryTeal, CircleShape)
                         ) {
                             Icon(Icons.Default.Call, contentDescription = "Call", tint = Color.White)
@@ -658,7 +696,7 @@ fun CallListContent(managedElders: List<ElderlyMember>, fontScale: Float, onBack
 
 @Composable
 fun ElderManagementContent(
-    managedElders: List<ElderlyMember>,
+    @Suppress("UNUSED_PARAMETER") managedElders: List<ElderlyMember>,
     fontScale: Float,
     onBack: () -> Unit,
     onAddElder: () -> Unit,
@@ -708,11 +746,9 @@ fun ElderManagementContent(
 fun AddElderContent(
     fontScale: Float,
     onBack: () -> Unit,
-    onAdd: (String, String, String) -> Unit
+    onAdd: (String) -> Unit
 ) {
-    var name by remember { mutableStateOf("") }
-    var address by remember { mutableStateOf("") }
-    var contact by remember { mutableStateOf("") }
+    var elderCode by remember { mutableStateOf("") }
 
     Column(modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 25.dp)) {
         Row(modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -724,7 +760,7 @@ fun AddElderContent(
         }
         
         Text(
-            text = stringResource(R.string.profile_configuration).uppercase(),
+            text = "LINKING ACCOUNT".uppercase(),
             color = PrimaryTeal,
             fontSize = 11.caretakerScaledSp(fontScale),
             fontWeight = FontWeight.Black,
@@ -740,57 +776,48 @@ fun AddElderContent(
         ) {
             Column(modifier = Modifier.padding(25.dp)) {
                 Text(
-                    text = stringResource(R.string.add_new_elder),
+                    text = "Assign Elder via Code",
                     color = Color.Black,
                     fontSize = 22.caretakerScaledSp(fontScale),
                     fontWeight = FontWeight.ExtraBold
                 )
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = "Enter the unique 6-digit code generated from the Elder's device to link their account to your dashboard.",
+                    color = Color.Gray,
+                    fontSize = 13.caretakerScaledSp(fontScale),
+                    lineHeight = 18.sp
+                )
+                
                 Spacer(modifier = Modifier.height(25.dp))
                 
                 SleekInputField(
-                    value = name,
-                    onValueChange = { name = it },
-                    placeholder = stringResource(R.string.full_name),
-                    icon = Icons.Default.Badge
+                    value = elderCode,
+                    onValueChange = { 
+                        if (it.length <= 6) elderCode = it.uppercase() 
+                    },
+                    placeholder = "Enter Elder Code",
+                    icon = Icons.Default.VpnKey
                 )
                 
-                Spacer(modifier = Modifier.height(18.dp))
-
-                SleekInputField(
-                    value = address,
-                    onValueChange = { address = it },
-                    placeholder = stringResource(R.string.home_address),
-                    icon = Icons.Default.Home
-                )
-
-                Spacer(modifier = Modifier.height(18.dp))
-
-                SleekInputField(
-                    value = contact,
-                    onValueChange = { 
-                        if (it.all { char -> char.isDigit() }) {
-                            contact = it 
-                        }
-                    },
-                    placeholder = stringResource(R.string.contact_number),
-                    icon = Icons.Default.Phone,
-                    keyboardType = KeyboardType.Number
-                )
-
                 Spacer(modifier = Modifier.height(30.dp))
                 
                 Button(
                     onClick = { 
-                        if (name.isNotBlank() && address.isNotBlank() && contact.isNotBlank()) {
-                            onAdd(name, address, contact)
+                        if (elderCode.length == 6) {
+                            onAdd(elderCode)
                         }
                     },
                     modifier = Modifier.fillMaxWidth().height(55.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PrimaryTeal,
+                        disabledContainerColor = Color.LightGray.copy(alpha = 0.4f),
+                        disabledContentColor = Color.Gray
+                    ),
                     shape = RoundedCornerShape(14.dp),
-                    enabled = name.isNotBlank() && address.isNotBlank() && contact.isNotBlank()
+                    enabled = elderCode.length == 6
                 ) {
-                    Text(stringResource(R.string.continue_btn), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.caretakerScaledSp(fontScale))
+                    Text("ASSIGN MEMBER", fontWeight = FontWeight.Bold, fontSize = 16.caretakerScaledSp(fontScale))
                 }
             }
         }
@@ -884,8 +911,9 @@ fun ArtisticElderCard(
 }
 
 @Composable
-fun ElderProfileContent(elder: ElderlyMember?, fontScale: Float, onBack: () -> Unit) {
+fun ElderProfileContent(elder: ElderlyMember?, fontScale: Float, onBack: () -> Unit, onCallElder: (String) -> Unit) {
     if (elder == null) return
+    val scrollState = rememberScrollState()
     Column(modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 25.dp)) {
         Row(modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack, modifier = Modifier.background(Color.White.copy(alpha = 0.05f), CircleShape)) {
@@ -896,12 +924,18 @@ fun ElderProfileContent(elder: ElderlyMember?, fontScale: Float, onBack: () -> U
         }
 
         Surface(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().weight(1f),
             color = Color.White.copy(alpha = 0.05f),
             shape = RoundedCornerShape(topStart = 80.dp, bottomEnd = 80.dp, topEnd = 20.dp, bottomStart = 20.dp),
             border = BorderStroke(1.dp, PrimaryTeal.copy(alpha = 0.3f))
         ) {
-            Column(modifier = Modifier.padding(30.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(scrollState)
+                    .padding(30.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
                 Box(modifier = Modifier.size(100.dp).clip(RoundedCornerShape(30.dp)).background(PrimaryTeal.copy(alpha = 0.1f)), contentAlignment = Alignment.Center) {
                     Icon(Icons.Default.Person, contentDescription = null, tint = PrimaryTeal, modifier = Modifier.size(50.dp))
                 }
@@ -913,9 +947,25 @@ fun ElderProfileContent(elder: ElderlyMember?, fontScale: Float, onBack: () -> U
                 
                 CaretakerDetailSection(label = stringResource(R.string.phone_number), value = elder.phoneNumber, icon = Icons.Default.Phone, fontScale = fontScale)
                 Spacer(modifier = Modifier.height(20.dp))
+                CaretakerDetailSection(label = stringResource(R.string.address), value = elder.address, icon = Icons.Default.LocationOn, fontScale = fontScale)
+                Spacer(modifier = Modifier.height(20.dp))
                 CaretakerDetailSection(label = stringResource(R.string.status).uppercase(), value = elder.status, icon = Icons.Default.Info, fontScale = fontScale)
+                
+                Spacer(modifier = Modifier.height(40.dp))
+
+                Button(
+                    onClick = { onCallElder(elder.phoneNumber) },
+                    modifier = Modifier.fillMaxWidth().height(60.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal),
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Icon(Icons.Default.Call, contentDescription = null, tint = Color.White)
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(text = "CALL MEMBER", fontWeight = FontWeight.ExtraBold, fontSize = 16.caretakerScaledSp(fontScale))
+                }
             }
         }
+        Spacer(modifier = Modifier.height(30.dp))
     }
 }
 
@@ -965,7 +1015,7 @@ fun MiniActivityItem(log: LogData, fontScale: Float, onClick: () -> Unit) {
 fun ActivityLogsContent(
     title: String,
     specificElderName: String? = null,
-    managedElders: List<ElderlyMember> = emptyList(),
+    @Suppress("UNUSED_PARAMETER") managedElders: List<ElderlyMember> = emptyList(),
     fontScale: Float,
     onBack: () -> Unit,
     onLogClick: (LogData) -> Unit
@@ -1026,12 +1076,11 @@ fun ModernLogTile(log: LogData, fontScale: Float, onClick: () -> Unit) {
 @Composable
 fun SettingsContent(
     name: String,
-    managedElders: List<ElderlyMember>,
+    @Suppress("UNUSED_PARAMETER") managedElders: List<ElderlyMember>,
     fontScale: Float,
     onBack: () -> Unit,
     onLogout: () -> Unit,
-    onNavigateToFontSize: () -> Unit,
-    onNavigateToLanguage: () -> Unit
+    onNavigateToFontSize: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 25.dp)) {
         Row(modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1045,8 +1094,7 @@ fun SettingsContent(
         Text(text = stringResource(R.string.system_preferences), color = PrimaryTeal, fontSize = 11.caretakerScaledSp(fontScale), fontWeight = FontWeight.Black, letterSpacing = 2.sp)
         Spacer(modifier = Modifier.height(15.dp))
         
-        SettingsTile(Icons.Default.Language, stringResource(R.string.language), stringResource(R.string.scaling_active), fontScale, onClick = onNavigateToLanguage)
-        SettingsTile(Icons.Default.TextFormat, stringResource(R.string.font_size), stringResource(R.string.scaling_active), fontScale, onClick = onNavigateToFontSize)
+        SettingsTile(Icons.Default.TextFormat, stringResource(R.string.font_size), stringResource(R.string.change_font_size), fontScale, onClick = onNavigateToFontSize)
         SettingsTile(Icons.Default.Person, stringResource(R.string.account_identity), name, fontScale)
         
         Spacer(modifier = Modifier.weight(1f))
@@ -1078,22 +1126,6 @@ fun SettingsTile(icon: ImageVector, title: String, value: String, fontScale: Flo
             Text(text = title, color = Color.White.copy(alpha = 0.5f), fontSize = 11.caretakerScaledSp(fontScale))
             Text(text = value, color = Color.White, fontSize = 15.caretakerScaledSp(fontScale), fontWeight = FontWeight.Medium)
         }
-    }
-}
-
-@Composable
-fun LanguageSelectionContent(currentLanguage: String = "en", fontScale: Float, onLanguageSelected: (String) -> Unit, onBack: () -> Unit) {
-    Column(modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 25.dp)) {
-        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack, modifier = Modifier.background(Color.White.copy(alpha = 0.05f), CircleShape)) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = PrimaryTeal)
-            }
-            Spacer(modifier = Modifier.width(15.dp))
-            Text(text = stringResource(R.string.language), color = Color.White, fontSize = 24.caretakerScaledSp(fontScale), fontWeight = FontWeight.Bold)
-        }
-        LanguageRadioTile("English", currentLanguage == "en", fontScale, onClick = { onLanguageSelected("en") })
-        Spacer(modifier = Modifier.height(15.dp))
-        LanguageRadioTile("Tagalog", currentLanguage == "tl", fontScale, onClick = { onLanguageSelected("tl") })
     }
 }
 
@@ -1131,10 +1163,25 @@ fun LanguageRadioTile(label: String, isSelected: Boolean, fontScale: Float, onCl
 }
 
 @Composable
-fun EditCaretakerProfileContent(initialName: String, initialAddress: String, initialContact: String, fontScale: Float, onBack: () -> Unit, onSave: (String, String, String) -> Unit) {
+fun EditCaretakerProfileContent(
+    initialName: String,
+    initialAddress: String,
+    initialContact: String,
+    fontScale: Float,
+    selectedImageUri: Uri?,
+    onImageSelected: (Uri?) -> Unit,
+    onBack: () -> Unit,
+    onSave: (String, String, String) -> Unit
+) {
     var name by remember { mutableStateOf(initialName) }
     var address by remember { mutableStateOf(initialAddress) }
     var contact by remember { mutableStateOf(initialContact) }
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        onImageSelected(uri)
+    }
 
     Column(modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 25.dp)) {
         Row(modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1144,11 +1191,81 @@ fun EditCaretakerProfileContent(initialName: String, initialAddress: String, ini
             Spacer(modifier = Modifier.width(15.dp))
             Text(text = stringResource(R.string.profile), color = Color.White, fontSize = 24.caretakerScaledSp(fontScale), fontWeight = FontWeight.Bold)
         }
+        
         SleekInputFieldWhite(value = name, onValueChange = { name = it }, placeholder = stringResource(R.string.full_name), icon = Icons.Default.Badge)
         Spacer(modifier = Modifier.height(20.dp))
         SleekInputFieldWhite(value = address, onValueChange = { address = it }, placeholder = stringResource(R.string.address), icon = Icons.Default.Home)
         Spacer(modifier = Modifier.height(20.dp))
         SleekInputFieldWhite(value = contact, onValueChange = { contact = it }, placeholder = stringResource(R.string.contact_number), icon = Icons.Default.Phone)
+        
+        Spacer(modifier = Modifier.height(30.dp))
+
+        // Profile Picture Section - Single Button implementation
+        Text(
+            text = "PROFILE PICTURE",
+            color = PrimaryTeal,
+            fontSize = 11.caretakerScaledSp(fontScale),
+            fontWeight = FontWeight.Black,
+            letterSpacing = 2.sp
+        )
+        Spacer(modifier = Modifier.height(15.dp))
+        
+        Surface(
+            onClick = { launcher.launch("image/*") },
+            modifier = Modifier.fillMaxWidth().height(100.dp),
+            shape = RoundedCornerShape(20.dp),
+            color = Color.White.copy(alpha = 0.05f),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
+        ) {
+            Row(
+                modifier = Modifier.padding(15.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(70.dp)
+                        .clip(RoundedCornerShape(15.dp))
+                        .background(Color.White.copy(alpha = 0.1f))
+                ) {
+                    if (selectedImageUri != null) {
+                        AsyncImage(
+                            model = selectedImageUri,
+                            contentDescription = "Selected Profile Picture",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Icon(Icons.Default.Person, contentDescription = null, tint = Color.White.copy(alpha = 0.2f), modifier = Modifier.fillMaxSize().padding(15.dp))
+                    }
+                }
+                
+                Spacer(modifier = Modifier.width(20.dp))
+                
+                Column {
+                    Text(
+                        text = if (selectedImageUri == null) "Select Profile Photo" else "Change Photo",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.caretakerScaledSp(fontScale)
+                    )
+                    Text(
+                        text = "Tap to browse gallery",
+                        color = PrimaryTeal,
+                        fontSize = 12.caretakerScaledSp(fontScale)
+                    )
+                }
+                
+                Spacer(modifier = Modifier.weight(1f))
+                
+                Icon(
+                    Icons.Default.PhotoCamera,
+                    contentDescription = null,
+                    tint = PrimaryTeal,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+
         Spacer(modifier = Modifier.weight(1f))
         Button(
             onClick = { onSave(name, address, contact) },

@@ -117,6 +117,7 @@ fun AppNavigation(
             LoginScreen(
                 authViewModel = authViewModel,
                 onNavigateToRegister = { navController.navigate("register") },
+                onNavigateToForgotPassword = { navController.navigate("forgot_password") },
                 onNavigateToDashboard = { email ->
                     val user = authViewModel.users.find { it.email == email }
                     if (user != null) {
@@ -139,6 +140,11 @@ fun AppNavigation(
                     authViewModel.register(email, password)
                     navController.navigate("role")
                 }
+            )
+        }
+        composable("forgot_password") {
+            ForgotPasswordScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
         composable("role") {
@@ -176,15 +182,13 @@ fun AppNavigation(
                     caretakerAddress = user.address,
                     caretakerContact = user.contact,
                     managedElders = user.managedElders,
-                    currentLanguage = prefViewModel.language,
                     currentFontSize = prefViewModel.fontSize,
-                    onLanguageChange = { prefViewModel.setAppLanguage(it) },
                     onFontSizeChange = { prefViewModel.setAppFontSize(it) },
                     onUpdateProfile = { name, address, contact ->
                         caretakerViewModel.updateProfile(name, address, contact)
                     },
-                    onAddElder = { name, address, contact -> 
-                        caretakerViewModel.addElderlyMember(name, address, contact) 
+                    onAddElder = { code -> 
+                        caretakerViewModel.assignElderByCode(code)
                     },
                     onLogout = {
                         authViewModel.logout()

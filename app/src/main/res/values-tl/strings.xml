@@ -35,7 +35,9 @@
     <string name="caretaker_id">CARETAKER ID</string>
     <string name="system_online">ONLINE ANG SYSTEM</string>
     <string name="caretaker_label">TAGAPAG-ALAGA</string>
-    <string name="call_member">Tawagan ang Miyembro</string>
+    <string name="call_member">Emergency Call</string>
+    <string name="emergency_hotline">911 Dial Support</string>
+    <string name="call_emergency_btn">TAWAG SA EMERGENCY (911)</string>
     <string name="manage_elders">Mga Nakatatanda</string>
     <string name="profiles_and_logs">Profile at Logs</string>
     <string name="connected">Nakakonekta</string>
@@ -52,7 +54,7 @@
     <string name="activity">AKTIBIDAD</string>
     <string name="phone_number">NUMERO</string>
     <string name="system_preferences">MGA GUSTO SA SYSTEM</string>
-    <string name="scaling_active">Aktibo ang Scaling</string>
+    <string name="change_font_size">Palitan ang Laki ng Font</string>
     <string name="account_identity">Identity ng Account</string>
     <string name="full_name">Buong Pangalan</string>
     <string name="contact_number">Numero</string>

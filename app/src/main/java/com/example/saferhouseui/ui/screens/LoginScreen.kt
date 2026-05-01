@@ -24,6 +24,7 @@ import com.example.saferhouseui.R
 fun LoginScreen(
     authViewModel: AuthViewModel,
     onNavigateToRegister: () -> Unit,
+    onNavigateToForgotPassword: () -> Unit,
     onNavigateToDashboard: (String) -> Unit
 ) {
     var email by remember { mutableStateOf("") }
@@ -155,7 +156,7 @@ fun LoginScreen(
                             )
                         }
 
-                        TextButton(onClick = { /* TODO */ }) {
+                        TextButton(onClick = onNavigateToForgotPassword) {
                             Text(
                                 text = stringResource(R.string.forgot),
                                 color = PrimaryTeal,
