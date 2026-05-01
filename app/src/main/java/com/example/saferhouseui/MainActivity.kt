@@ -117,6 +117,7 @@ fun AppNavigation(
             LoginScreen(
                 authViewModel = authViewModel,
                 onNavigateToRegister = { navController.navigate("register") },
+                onNavigateToForgotPassword = { navController.navigate("forgot_password") },
                 onNavigateToDashboard = { email ->
                     val user = authViewModel.users.find { it.email == email }
                     if (user != null) {
@@ -139,6 +140,11 @@ fun AppNavigation(
                     authViewModel.register(email, password)
                     navController.navigate("role")
                 }
+            )
+        }
+        composable("forgot_password") {
+            ForgotPasswordScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
         composable("role") {
