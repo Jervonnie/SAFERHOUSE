@@ -30,6 +30,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.res.stringResource
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.net.Uri
+import coil.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
 import com.example.saferhouseui.ElderlyMember
 import com.example.saferhouseui.R
 import com.example.saferhouseui.ui.theme.DarkBackground
@@ -62,6 +67,8 @@ fun CaretakerDashboardScreen(
     var selectedLog by remember { mutableStateOf<LogData?>(null) }
     var logBackDestination by remember { mutableStateOf("dashboard") }
 
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+
     var pendingLanguage by remember { mutableStateOf(currentLanguage) }
     var pendingFontSize by remember { mutableStateOf(currentFontSize) }
 
@@ -78,6 +85,7 @@ fun CaretakerDashboardScreen(
                 address = caretakerAddress,
                 managedElders = managedElders,
                 fontScale = fontScale,
+                selectedImageUri = selectedImageUri,
                 onNavigateToLogs = { 
                     logBackDestination = "dashboard"
                     currentScreen = "logs" 
@@ -97,6 +105,8 @@ fun CaretakerDashboardScreen(
                 initialAddress = caretakerAddress,
                 initialContact = caretakerContact,
                 fontScale = fontScale,
+                selectedImageUri = selectedImageUri,
+                onImageSelected = { selectedImageUri = it },
                 onBack = { currentScreen = "dashboard" },
                 onSave = { name, address, contact ->
                     onUpdateProfile(name, address, contact)
@@ -201,6 +211,7 @@ fun DashboardContent(
     address: String,
     managedElders: List<ElderlyMember>,
     fontScale: Float,
+    selectedImageUri: Uri?,
     onNavigateToLogs: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToCallList: () -> Unit,
@@ -274,12 +285,21 @@ fun DashboardContent(
                             .clip(RoundedCornerShape(15.dp))
                             .background(Color(0xFFF0F0F0))
                     ) {
-                        Icon(
-                            Icons.Default.Person, 
-                            contentDescription = null, 
-                            tint = Color.Gray, 
-                            modifier = Modifier.fillMaxSize().padding(10.dp)
-                        )
+                        if (selectedImageUri != null) {
+                            AsyncImage(
+                                model = selectedImageUri,
+                                contentDescription = "Profile Picture",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Icon(
+                                Icons.Default.Person,
+                                contentDescription = null,
+                                tint = Color.Gray,
+                                modifier = Modifier.fillMaxSize().padding(10.dp)
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.width(18.dp))
@@ -1131,10 +1151,25 @@ fun LanguageRadioTile(label: String, isSelected: Boolean, fontScale: Float, onCl
 }
 
 @Composable
-fun EditCaretakerProfileContent(initialName: String, initialAddress: String, initialContact: String, fontScale: Float, onBack: () -> Unit, onSave: (String, String, String) -> Unit) {
+fun EditCaretakerProfileContent(
+    initialName: String,
+    initialAddress: String,
+    initialContact: String,
+    fontScale: Float,
+    selectedImageUri: Uri?,
+    onImageSelected: (Uri?) -> Unit,
+    onBack: () -> Unit,
+    onSave: (String, String, String) -> Unit
+) {
     var name by remember { mutableStateOf(initialName) }
     var address by remember { mutableStateOf(initialAddress) }
     var contact by remember { mutableStateOf(initialContact) }
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        onImageSelected(uri)
+    }
 
     Column(modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 25.dp)) {
         Row(modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1144,11 +1179,81 @@ fun EditCaretakerProfileContent(initialName: String, initialAddress: String, ini
             Spacer(modifier = Modifier.width(15.dp))
             Text(text = stringResource(R.string.profile), color = Color.White, fontSize = 24.caretakerScaledSp(fontScale), fontWeight = FontWeight.Bold)
         }
+        
         SleekInputFieldWhite(value = name, onValueChange = { name = it }, placeholder = stringResource(R.string.full_name), icon = Icons.Default.Badge)
         Spacer(modifier = Modifier.height(20.dp))
         SleekInputFieldWhite(value = address, onValueChange = { address = it }, placeholder = stringResource(R.string.address), icon = Icons.Default.Home)
         Spacer(modifier = Modifier.height(20.dp))
         SleekInputFieldWhite(value = contact, onValueChange = { contact = it }, placeholder = stringResource(R.string.contact_number), icon = Icons.Default.Phone)
+        
+        Spacer(modifier = Modifier.height(30.dp))
+
+        // Profile Picture Section - Single Button implementation
+        Text(
+            text = "PROFILE PICTURE",
+            color = PrimaryTeal,
+            fontSize = 11.caretakerScaledSp(fontScale),
+            fontWeight = FontWeight.Black,
+            letterSpacing = 2.sp
+        )
+        Spacer(modifier = Modifier.height(15.dp))
+        
+        Surface(
+            onClick = { launcher.launch("image/*") },
+            modifier = Modifier.fillMaxWidth().height(100.dp),
+            shape = RoundedCornerShape(20.dp),
+            color = Color.White.copy(alpha = 0.05f),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
+        ) {
+            Row(
+                modifier = Modifier.padding(15.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(70.dp)
+                        .clip(RoundedCornerShape(15.dp))
+                        .background(Color.White.copy(alpha = 0.1f))
+                ) {
+                    if (selectedImageUri != null) {
+                        AsyncImage(
+                            model = selectedImageUri,
+                            contentDescription = "Selected Profile Picture",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Icon(Icons.Default.Person, contentDescription = null, tint = Color.White.copy(alpha = 0.2f), modifier = Modifier.fillMaxSize().padding(15.dp))
+                    }
+                }
+                
+                Spacer(modifier = Modifier.width(20.dp))
+                
+                Column {
+                    Text(
+                        text = if (selectedImageUri == null) "Select Profile Photo" else "Change Photo",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.caretakerScaledSp(fontScale)
+                    )
+                    Text(
+                        text = "Tap to browse gallery",
+                        color = PrimaryTeal,
+                        fontSize = 12.caretakerScaledSp(fontScale)
+                    )
+                }
+                
+                Spacer(modifier = Modifier.weight(1f))
+                
+                Icon(
+                    Icons.Default.PhotoCamera,
+                    contentDescription = null,
+                    tint = PrimaryTeal,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+
         Spacer(modifier = Modifier.weight(1f))
         Button(
             onClick = { onSave(name, address, contact) },
