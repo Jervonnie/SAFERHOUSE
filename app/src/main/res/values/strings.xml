@@ -36,7 +36,9 @@
     <string name="caretaker_id">CARETAKER ID</string>
     <string name="system_online">SYSTEM ONLINE</string>
     <string name="caretaker_label">CARETAKER</string>
-    <string name="call_member">Call Member</string>
+    <string name="call_member">Emergency Call</string>
+    <string name="emergency_hotline">911 Dial Support</string>
+    <string name="call_emergency_btn">CALL EMERGENCY (911)</string>
     <string name="manage_elders">Manage Elders</string>
     <string name="profiles_and_logs">Profiles &amp; Logs</string>
     <string name="connected">Connected</string>

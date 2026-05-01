@@ -7,9 +7,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -27,12 +29,13 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.res.stringResource
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import android.net.Uri
+import android.content.Intent
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.net.toUri
 import coil.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
 import com.example.saferhouseui.ElderlyMember
@@ -58,7 +61,7 @@ fun CaretakerDashboardScreen(
     onFontSizeChange: (String) -> Unit,
     onUpdateProfile: (String, String, String) -> Unit,
     onAddElder: (String, String, String) -> Unit,
-    onLogout: () -> Unit
+    @Suppress("UNUSED_PARAMETER") onLogout: () -> Unit
 ) {
     var currentScreen by remember { mutableStateOf("dashboard") }
     var selectedElderForLogs by remember { mutableStateOf<ElderlyMember?>(null) }
@@ -75,6 +78,14 @@ fun CaretakerDashboardScreen(
         else -> 1.0f
     }
 
+    val context = LocalContext.current
+    val triggerCall = { number: String ->
+        val intent = Intent(Intent.ACTION_DIAL).apply {
+            data = "tel:$number".toUri()
+        }
+        context.startActivity(intent)
+    }
+
     Box(modifier = Modifier.fillMaxSize().background(DarkBackground)) {
         when (currentScreen) {
             "dashboard" -> DashboardContent(
@@ -88,7 +99,7 @@ fun CaretakerDashboardScreen(
                     currentScreen = "logs" 
                 },
                 onNavigateToSettings = { currentScreen = "settings" },
-                onNavigateToCallList = { currentScreen = "call_list" },
+                onNavigateToCallList = { triggerCall("911") },
                 onNavigateToManagement = { currentScreen = "elder_management" },
                 onNavigateToEditProfile = { currentScreen = "edit_profile" },
                 onLogClick = { log ->
@@ -124,7 +135,8 @@ fun CaretakerDashboardScreen(
             "call_list" -> CallListContent(
                 managedElders = managedElders,
                 fontScale = fontScale,
-                onBack = { currentScreen = "dashboard" }
+                onBack = { currentScreen = "dashboard" },
+                onCallElder = { number -> triggerCall(number) }
             )
             "elder_management" -> ElderManagementContent(
                 managedElders = managedElders,
@@ -152,7 +164,8 @@ fun CaretakerDashboardScreen(
             "elder_profile" -> ElderProfileContent(
                 elder = selectedElderForLogs,
                 fontScale = fontScale,
-                onBack = { currentScreen = "elder_management" }
+                onBack = { currentScreen = "elder_management" },
+                onCallElder = { number -> triggerCall(number) }
             )
             "specific_logs" -> ActivityLogsContent(
                 title = "${selectedElderForLogs?.name}'s History",
@@ -168,7 +181,8 @@ fun CaretakerDashboardScreen(
             "log_detail" -> LogDetailContent(
                 log = selectedLog,
                 fontScale = fontScale,
-                onBack = { currentScreen = logBackDestination }
+                onBack = { currentScreen = logBackDestination },
+                onCallEmergency = { triggerCall("911") }
             )
             "settings" -> SettingsContent(
                 name = caretakerName,
@@ -198,7 +212,7 @@ fun Int.caretakerScaledSp(scale: Float): TextUnit = (this * scale).sp
 fun DashboardContent(
     name: String,
     address: String,
-    managedElders: List<ElderlyMember>,
+    @Suppress("UNUSED_PARAMETER") managedElders: List<ElderlyMember>,
     fontScale: Float,
     selectedImageUri: Uri?,
     onNavigateToLogs: () -> Unit,
@@ -337,9 +351,9 @@ fun DashboardContent(
                 DashboardActionButton(
                     modifier = Modifier.weight(1f),
                     title = stringResource(R.string.call_member),
-                    subtitle = "${managedElders.size} ${stringResource(R.string.connected)}",
+                    subtitle = stringResource(R.string.emergency_hotline),
                     icon = Icons.Default.Call,
-                    color = PrimaryTeal,
+                    color = Color(0xFFFF4B4B),
                     fontScale = fontScale,
                     onClick = onNavigateToCallList
                 )
@@ -427,7 +441,8 @@ fun DashboardActionButton(
 fun LogDetailContent(
     log: LogData?,
     fontScale: Float,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onCallEmergency: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -565,6 +580,20 @@ fun LogDetailContent(
 
                 Spacer(modifier = Modifier.height(25.dp))
 
+                if (log?.color == Color.Red) {
+                    Button(
+                        onClick = onCallEmergency,
+                        modifier = Modifier.fillMaxWidth().height(60.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF4B4B)),
+                        shape = RoundedCornerShape(25.dp)
+                    ) {
+                        Icon(Icons.Default.Call, contentDescription = null, tint = Color.White)
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(stringResource(R.string.call_emergency_btn), color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 14.caretakerScaledSp(fontScale))
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
                 Button(
                     onClick = onBack,
                     modifier = Modifier.fillMaxWidth().height(60.dp),
@@ -626,7 +655,7 @@ fun IndustrialLogTile(
 }
 
 @Composable
-fun CallListContent(managedElders: List<ElderlyMember>, fontScale: Float, onBack: () -> Unit) {
+fun CallListContent(@Suppress("UNUSED_PARAMETER") managedElders: List<ElderlyMember>, fontScale: Float, onBack: () -> Unit, onCallElder: (String) -> Unit) {
     Column(modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 25.dp)) {
         Row(modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack, modifier = Modifier.background(Color.White.copy(alpha = 0.05f), CircleShape)) {
@@ -653,7 +682,7 @@ fun CallListContent(managedElders: List<ElderlyMember>, fontScale: Float, onBack
                             Text(text = elder.status, color = if(elder.status == "Safe") PrimaryTeal else Color.Red, fontSize = 12.caretakerScaledSp(fontScale))
                         }
                         IconButton(
-                            onClick = { /* Trigger Call */ },
+                            onClick = { onCallElder(elder.phoneNumber) },
                             modifier = Modifier.background(PrimaryTeal, CircleShape)
                         ) {
                             Icon(Icons.Default.Call, contentDescription = "Call", tint = Color.White)
@@ -667,7 +696,7 @@ fun CallListContent(managedElders: List<ElderlyMember>, fontScale: Float, onBack
 
 @Composable
 fun ElderManagementContent(
-    managedElders: List<ElderlyMember>,
+    @Suppress("UNUSED_PARAMETER") managedElders: List<ElderlyMember>,
     fontScale: Float,
     onBack: () -> Unit,
     onAddElder: () -> Unit,
@@ -893,8 +922,9 @@ fun ArtisticElderCard(
 }
 
 @Composable
-fun ElderProfileContent(elder: ElderlyMember?, fontScale: Float, onBack: () -> Unit) {
+fun ElderProfileContent(elder: ElderlyMember?, fontScale: Float, onBack: () -> Unit, onCallElder: (String) -> Unit) {
     if (elder == null) return
+    val scrollState = rememberScrollState()
     Column(modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 25.dp)) {
         Row(modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack, modifier = Modifier.background(Color.White.copy(alpha = 0.05f), CircleShape)) {
@@ -905,12 +935,18 @@ fun ElderProfileContent(elder: ElderlyMember?, fontScale: Float, onBack: () -> U
         }
 
         Surface(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().weight(1f),
             color = Color.White.copy(alpha = 0.05f),
             shape = RoundedCornerShape(topStart = 80.dp, bottomEnd = 80.dp, topEnd = 20.dp, bottomStart = 20.dp),
             border = BorderStroke(1.dp, PrimaryTeal.copy(alpha = 0.3f))
         ) {
-            Column(modifier = Modifier.padding(30.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(scrollState)
+                    .padding(30.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
                 Box(modifier = Modifier.size(100.dp).clip(RoundedCornerShape(30.dp)).background(PrimaryTeal.copy(alpha = 0.1f)), contentAlignment = Alignment.Center) {
                     Icon(Icons.Default.Person, contentDescription = null, tint = PrimaryTeal, modifier = Modifier.size(50.dp))
                 }
@@ -922,9 +958,25 @@ fun ElderProfileContent(elder: ElderlyMember?, fontScale: Float, onBack: () -> U
                 
                 CaretakerDetailSection(label = stringResource(R.string.phone_number), value = elder.phoneNumber, icon = Icons.Default.Phone, fontScale = fontScale)
                 Spacer(modifier = Modifier.height(20.dp))
+                CaretakerDetailSection(label = stringResource(R.string.address), value = elder.address, icon = Icons.Default.LocationOn, fontScale = fontScale)
+                Spacer(modifier = Modifier.height(20.dp))
                 CaretakerDetailSection(label = stringResource(R.string.status).uppercase(), value = elder.status, icon = Icons.Default.Info, fontScale = fontScale)
+                
+                Spacer(modifier = Modifier.height(40.dp))
+
+                Button(
+                    onClick = { onCallElder(elder.phoneNumber) },
+                    modifier = Modifier.fillMaxWidth().height(60.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal),
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Icon(Icons.Default.Call, contentDescription = null, tint = Color.White)
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(text = "CALL MEMBER", fontWeight = FontWeight.ExtraBold, fontSize = 16.caretakerScaledSp(fontScale))
+                }
             }
         }
+        Spacer(modifier = Modifier.height(30.dp))
     }
 }
 
@@ -974,7 +1026,7 @@ fun MiniActivityItem(log: LogData, fontScale: Float, onClick: () -> Unit) {
 fun ActivityLogsContent(
     title: String,
     specificElderName: String? = null,
-    managedElders: List<ElderlyMember> = emptyList(),
+    @Suppress("UNUSED_PARAMETER") managedElders: List<ElderlyMember> = emptyList(),
     fontScale: Float,
     onBack: () -> Unit,
     onLogClick: (LogData) -> Unit
@@ -1035,7 +1087,7 @@ fun ModernLogTile(log: LogData, fontScale: Float, onClick: () -> Unit) {
 @Composable
 fun SettingsContent(
     name: String,
-    managedElders: List<ElderlyMember>,
+    @Suppress("UNUSED_PARAMETER") managedElders: List<ElderlyMember>,
     fontScale: Float,
     onBack: () -> Unit,
     onLogout: () -> Unit,
