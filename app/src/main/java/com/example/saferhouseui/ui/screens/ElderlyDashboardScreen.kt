@@ -1,5 +1,7 @@
 package com.example.saferhouseui.ui.screens
 
+import android.content.ClipData
+import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
@@ -22,6 +24,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -30,6 +34,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.window.Dialog
 import com.example.saferhouseui.R
 import com.example.saferhouseui.ui.theme.DarkBackground
 import com.example.saferhouseui.ui.theme.PrimaryTeal
@@ -40,9 +45,11 @@ fun ElderlyDashboardScreen(
     elderName: String,
     elderAddress: String,
     elderContact: String,
-    caretakerName: String,
+    caregiverName: String,
     currentLanguage: String,
     currentFontSize: String,
+    isEmergencyActive: Boolean,
+    onEmergencyToggle: () -> Unit,
     onLanguageChange: (String) -> Unit,
     onFontSizeChange: (String) -> Unit,
     onLogout: () -> Unit
@@ -88,12 +95,17 @@ fun ElderlyDashboardScreen(
                 ) { padding ->
                     Box(modifier = Modifier.fillMaxSize().padding(padding)) {
                         when (currentScreen) {
-                            "dashboard" -> ElderlyDashboardContent(elderName, fontScale)
+                            "dashboard" -> ElderlyDashboardContent(
+                                elderName = elderName,
+                                fontScale = fontScale,
+                                isEmergencyActive = isEmergencyActive,
+                                onEmergencyToggle = onEmergencyToggle
+                            )
                             "profile" -> ElderlyProfileContent(
                                 name = elderName,
                                 address = elderAddress,
                                 contact = elderContact,
-                                caretaker = caretakerName,
+                                caregiver = caregiverName,
                                 fontScale = fontScale,
                                 onBack = { currentScreen = "dashboard" }
                             )
@@ -118,7 +130,12 @@ fun ElderlyDashboardScreen(
 fun Int.scaledSp(scale: Float): TextUnit = (this * scale).sp
 
 @Composable
-fun ElderlyDashboardContent(elderName: String, fontScale: Float) {
+fun ElderlyDashboardContent(
+    elderName: String,
+    fontScale: Float,
+    isEmergencyActive: Boolean,
+    onEmergencyToggle: () -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -170,11 +187,10 @@ fun ElderlyDashboardContent(elderName: String, fontScale: Float) {
         }
 
         // Emergency Button
-        var isEmergencyActive by remember { mutableStateOf(false) }
         EmergencyButtonRefined(
             isActive = isEmergencyActive,
             fontScale = fontScale,
-            onClick = { isEmergencyActive = !isEmergencyActive }
+            onClick = onEmergencyToggle
         )
 
         // Helper Text
@@ -207,10 +223,19 @@ fun ElderlyProfileContent(
     name: String,
     address: String,
     contact: String,
-    caretaker: String,
+    caregiver: String,
     fontScale: Float,
     onBack: () -> Unit
 ) {
+    val showConnectDialog = remember { mutableStateOf(false) }
+
+    if (showConnectDialog.value) {
+        ConnectCaregiverDialog(
+            fontScale = fontScale,
+            onDismiss = { showConnectDialog.value = false }
+        )
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -249,14 +274,27 @@ fun ElderlyProfileContent(
             
             item {
                 ProfileCard(
-                    title = stringResource(R.string.caretaker_info).uppercase(),
-                    name = caretaker,
-                    address = "123 Caretaker Lane, QC",
+                    title = stringResource(R.string.caregiver_info).uppercase(),
+                    name = caregiver,
+                    address = "123 Caregiver Lane, QC",
                     contact = "0987-654-3210",
-                    idLabel = stringResource(R.string.caretaker_id),
+                    idLabel = stringResource(R.string.caregiver_id),
                     idValue = "C-000456",
                     fontScale = fontScale
                 )
+            }
+
+            item {
+                Button(
+                    onClick = { showConnectDialog.value = true },
+                    modifier = Modifier.fillMaxWidth().height(60.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal),
+                    shape = RoundedCornerShape(15.dp)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null, tint = Color.White)
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(stringResource(R.string.connect_with_caregiver), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.scaledSp(fontScale))
+                }
             }
 
             item {
@@ -663,6 +701,128 @@ fun ElderlySettingsContent(
             shape = RoundedCornerShape(15.dp)
         ) {
             Text(stringResource(R.string.done), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.scaledSp(fontScale))
+        }
+    }
+}
+
+@Composable
+fun ConnectCaregiverDialog(
+    fontScale: Float,
+    onDismiss: () -> Unit
+) {
+    var generatedCode by remember { mutableStateOf("") }
+    val clipboard = LocalClipboard.current
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = RoundedCornerShape(28.dp),
+            color = Color(0xFF1E1E1E),
+            border = BorderStroke(1.dp, PrimaryTeal.copy(alpha = 0.3f))
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(24.dp)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(R.string.connection_code),
+                        color = PrimaryTeal,
+                        fontSize = 20.scaledSp(fontScale),
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White.copy(alpha = 0.6f))
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Text(
+                    text = stringResource(R.string.share_code_msg),
+                    color = Color.White.copy(alpha = 0.7f),
+                    fontSize = 16.scaledSp(fontScale),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 10.dp)
+                )
+
+                Spacer(modifier = Modifier.height(30.dp))
+
+                if (generatedCode.isEmpty()) {
+                    Button(
+                        onClick = {
+                            generatedCode = (100000..999999).random().toString()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().height(56.dp)
+                    ) {
+                        Text(stringResource(R.string.generate_code), fontWeight = FontWeight.Bold, fontSize = 18.scaledSp(fontScale))
+                    }
+                } else {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Surface(
+                            color = Color.White.copy(alpha = 0.05f),
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(2.dp, PrimaryTeal.copy(alpha = 0.5f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = generatedCode,
+                                color = Color.White,
+                                fontSize = 40.scaledSp(fontScale),
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 8.sp,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(vertical = 20.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            OutlinedButton(
+                                onClick = {
+                                    val clipData = ClipData.newPlainText("connection_code", generatedCode)
+                                    val clipEntry = androidx.compose.ui.platform.ClipEntry(clipData)
+                                    scope.launch {
+                                        clipboard.setClipEntry(clipEntry)
+                                        Toast.makeText(context, "Copied!", Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                                modifier = Modifier.weight(1f).height(50.dp),
+                                border = BorderStroke(1.dp, PrimaryTeal),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Icon(Icons.Default.ContentCopy, contentDescription = null, tint = PrimaryTeal)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(stringResource(R.string.copy), color = PrimaryTeal, fontWeight = FontWeight.Bold)
+                            }
+
+                            Button(
+                                onClick = onDismiss,
+                                modifier = Modifier.weight(1f).height(50.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text(stringResource(R.string.close), fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+            }
         }
     }
 }

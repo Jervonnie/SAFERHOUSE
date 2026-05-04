@@ -34,7 +34,7 @@ fun SetupScreen(
     var address by remember { mutableStateOf("") }
     var contact by remember { mutableStateOf("") }
 
-    val roleTitle = if (role == "elder") stringResource(R.string.elder_setup) else stringResource(R.string.caretaker_setup)
+    val roleTitle = if (role == "elder") stringResource(R.string.elder_setup) else stringResource(R.string.caregiver_setup)
 
     Surface(
         modifier = Modifier.fillMaxSize(),

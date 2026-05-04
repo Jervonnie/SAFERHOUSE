@@ -19,7 +19,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         UserProfile(
             "caretaker@demo.com",
             "password123",
-            "helper",
+            "caregiver",
             "Juan Dela Cruz",
             "Brgy. New Era, Quezon City",
             "09123456789",

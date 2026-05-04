@@ -26,7 +26,8 @@ import com.example.saferhouseui.ui.theme.SaferHouseUITheme
 
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.saferhouseui.viewmodel.AuthViewModel
-import com.example.saferhouseui.viewmodel.CaretakerViewModel
+import com.example.saferhouseui.viewmodel.CaregiverViewModel
+import com.example.saferhouseui.viewmodel.ElderlyViewModel
 import com.example.saferhouseui.viewmodel.UserPreferenceViewModel
 
 class MainActivity : AppCompatActivity() {
@@ -36,11 +37,16 @@ class MainActivity : AppCompatActivity() {
         setContent {
             val prefViewModel: UserPreferenceViewModel = viewModel()
             val authViewModel: AuthViewModel = viewModel()
-            val caretakerViewModel: CaretakerViewModel = viewModel(
+            val elderlyViewModel: ElderlyViewModel = viewModel(
+                factory = androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner.current?.let {
+                    androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.getInstance(application)
+                }
+            )
+            val caregiverViewModel: CaregiverViewModel = viewModel(
                 factory = object : androidx.lifecycle.ViewModelProvider.Factory {
                     @Suppress("UNCHECKED_CAST")
                     override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-                        return CaretakerViewModel(authViewModel) as T
+                        return CaregiverViewModel(authViewModel) as T
                     }
                 }
             )
@@ -50,7 +56,8 @@ class MainActivity : AppCompatActivity() {
                     AppNavigation(
                         prefViewModel = prefViewModel,
                         authViewModel = authViewModel,
-                        caretakerViewModel = caretakerViewModel
+                        caregiverViewModel = caregiverViewModel,
+                        elderlyViewModel = elderlyViewModel
                     )
                     
                     if (prefViewModel.isLoading) {
@@ -104,7 +111,8 @@ data class ElderlyMember(
 fun AppNavigation(
     prefViewModel: UserPreferenceViewModel,
     authViewModel: AuthViewModel,
-    caretakerViewModel: CaretakerViewModel
+    caregiverViewModel: CaregiverViewModel,
+    elderlyViewModel: ElderlyViewModel
 ) {
     val navController = rememberNavController()
     val currentUser = authViewModel.currentUser
@@ -122,7 +130,7 @@ fun AppNavigation(
                     val user = authViewModel.users.find { it.email == email }
                     if (user != null) {
                         val route = when (user.role) {
-                            "helper" -> "caretaker_dashboard"
+                            "caregiver" -> "caregiver_dashboard"
                             "elder" -> "elderly_dashboard"
                             else -> "role"
                         }
@@ -151,7 +159,7 @@ fun AppNavigation(
             RoleScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToNext = { role ->
-                    caretakerViewModel.updateRole(role)
+                    caregiverViewModel.updateRole(role)
                     navController.navigate("setup/$role") {
                         popUpTo("role") { inclusive = true }
                     }
@@ -167,7 +175,7 @@ fun AppNavigation(
                 role = role,
                 onNavigateBack = { navController.popBackStack() },
                 onComplete = { name, address, contact ->
-                    caretakerViewModel.updateProfile(name, address, contact)
+                    caregiverViewModel.updateProfile(name, address, contact)
                     authViewModel.logout()
                     navController.navigate("login") {
                         popUpTo(0) { inclusive = true }
@@ -175,25 +183,28 @@ fun AppNavigation(
                 }
             )
         }
-        composable("caretaker_dashboard") {
+        composable("caregiver_dashboard") {
             currentUser?.let { user ->
-                CaretakerDashboardScreen(
-                    caretakerName = user.name,
-                    caretakerAddress = user.address,
-                    caretakerContact = user.contact,
+                CaregiverDashboardScreen(
+                    caregiverName = user.name,
+                    caregiverAddress = user.address,
+                    caregiverContact = user.contact,
                     managedElders = user.managedElders,
                     currentFontSize = prefViewModel.fontSize,
                     onFontSizeChange = { prefViewModel.setAppFontSize(it) },
                     onUpdateProfile = { name, address, contact ->
-                        caretakerViewModel.updateProfile(name, address, contact)
+                        caregiverViewModel.updateProfile(name, address, contact)
                     },
                     onAddElder = { code -> 
-                        caretakerViewModel.assignElderByCode(code)
+                        caregiverViewModel.assignElderByCode(code)
+                    },
+                    onRemoveElder = { elderId ->
+                        caregiverViewModel.removeElderlyMember(elderId)
                     },
                     onLogout = {
                         authViewModel.logout()
                         navController.navigate("login") {
-                            popUpTo("caretaker_dashboard") { inclusive = true }
+                            popUpTo("caregiver_dashboard") { inclusive = true }
                         }
                     }
                 )
@@ -205,9 +216,11 @@ fun AppNavigation(
                     elderName = user.name,
                     elderAddress = user.address,
                     elderContact = user.contact,
-                    caretakerName = "Juan Dela Cruz", // Mock for now
+                    caregiverName = "Juan Dela Cruz", // Mock for now
                     currentLanguage = prefViewModel.language,
                     currentFontSize = prefViewModel.fontSize,
+                    isEmergencyActive = elderlyViewModel.isEmergencyActive,
+                    onEmergencyToggle = { elderlyViewModel.toggleEmergency() },
                     onLanguageChange = { prefViewModel.setAppLanguage(it) },
                     onFontSizeChange = { prefViewModel.setAppFontSize(it) },
                     onLogout = {

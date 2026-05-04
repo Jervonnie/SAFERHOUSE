@@ -152,7 +152,7 @@ fun LoginScreen(
                             Text(
                                 text = stringResource(R.string.keep_me_logged_in),
                                 color = Color.Gray,
-                                fontSize = 14.sp
+                                fontSize = 13.sp
                             )
                         }
 
@@ -160,7 +160,7 @@ fun LoginScreen(
                             Text(
                                 text = stringResource(R.string.forgot),
                                 color = PrimaryTeal,
-                                fontSize = 14.sp,
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold
                             )
                         }

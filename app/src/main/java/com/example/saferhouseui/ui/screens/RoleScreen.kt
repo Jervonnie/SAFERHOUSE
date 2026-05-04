@@ -103,10 +103,10 @@ fun RoleScreen(
                         )
                         ModernRoleCard(
                             modifier = Modifier.weight(1f),
-                            title = stringResource(R.string.caretaker),
+                            title = stringResource(R.string.caregiver),
                             imageRes = R.drawable.caretaker_lil_rae,
-                            isSelected = selectedRole == "helper",
-                            onClick = { selectedRole = "helper" }
+                            isSelected = selectedRole == "caregiver",
+                            onClick = { selectedRole = "caregiver" }
                         )
                     }
 
