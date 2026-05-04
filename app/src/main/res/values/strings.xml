@@ -95,7 +95,7 @@
     <string name="remove_member_title">Remove Member?</string>
     <string name="remove_member_msg">Are you sure you want to remove %1$s from your managed list?</string>
     <string name="remove">REMOVE</string>
-    <string name="cancel">CANCEL</string>
+    <string name="cancel">Cancel</string>
     <string name="linking_account">LINKING ACCOUNT</string>
     <string name="assign_elder_title">Assign Elder via Code</string>
     <string name="assign_elder_desc">Enter the unique 6-digit code generated from the Elder\'s device to link their account to your dashboard.</string>

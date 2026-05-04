@@ -5,6 +5,7 @@ import androidx.room.PrimaryKey
 import java.util.UUID
 
 @Entity(tableName = "activity_logs")
+@Suppress("unused")
 data class ActivityLog(
     @PrimaryKey
     val id: String = UUID.randomUUID().toString(),

@@ -170,6 +170,7 @@ fun SetupScreen(
 }
 
 @Composable
+@Suppress("unused")
 fun SleekInputField(
     value: String,
     onValueChange: (String) -> Unit,
