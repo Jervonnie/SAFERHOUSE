@@ -17,6 +17,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Elderly
+import androidx.compose.material.icons.filled.HealthAndSafety
 import com.example.saferhouseui.R
 import com.example.saferhouseui.ui.theme.DarkBackground
 import com.example.saferhouseui.ui.theme.PrimaryTeal
@@ -97,16 +101,16 @@ fun RoleScreen(
                         ModernRoleCard(
                             modifier = Modifier.weight(1f),
                             title = stringResource(R.string.elderly),
-                            imageRes = R.drawable.elder_mao,
+                            icon = Icons.Default.Elderly,
                             isSelected = selectedRole == "elder",
                             onClick = { selectedRole = "elder" }
                         )
                         ModernRoleCard(
                             modifier = Modifier.weight(1f),
-                            title = stringResource(R.string.caretaker),
-                            imageRes = R.drawable.caretaker_lil_rae,
-                            isSelected = selectedRole == "helper",
-                            onClick = { selectedRole = "helper" }
+                            title = stringResource(R.string.caregiver),
+                            icon = Icons.Default.HealthAndSafety,
+                            isSelected = selectedRole == "caregiver",
+                            onClick = { selectedRole = "caregiver" }
                         )
                     }
 
@@ -153,7 +157,7 @@ fun RoleScreen(
 fun ModernRoleCard(
     modifier: Modifier = Modifier,
     title: String,
-    imageRes: Int,
+    icon: ImageVector,
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
@@ -173,15 +177,20 @@ fun ModernRoleCard(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Image(
-                painter = painterResource(id = imageRes),
-                contentDescription = title,
+            Box(
                 modifier = Modifier
                     .size(80.dp)
                     .clip(CircleShape)
                     .border(3.dp, if (isSelected) PrimaryTeal else Color.White, CircleShape),
-                contentScale = ContentScale.Crop
-            )
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = title,
+                    modifier = Modifier.size(45.dp),
+                    tint = if (isSelected) PrimaryTeal else Color.Gray
+                )
+            }
             
             Spacer(modifier = Modifier.height(12.dp))
             

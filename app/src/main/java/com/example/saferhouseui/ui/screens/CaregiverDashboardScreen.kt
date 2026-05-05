@@ -52,15 +52,16 @@ data class LogData(
 )
 
 @Composable
-fun CaretakerDashboardScreen(
-    caretakerName: String,
-    caretakerAddress: String,
-    caretakerContact: String,
+fun CaregiverDashboardScreen(
+    caregiverName: String,
+    caregiverAddress: String,
+    caregiverContact: String,
     managedElders: List<ElderlyMember>,
     currentFontSize: String,
     onFontSizeChange: (String) -> Unit,
     onUpdateProfile: (String, String, String) -> Unit,
     onAddElder: (String) -> Unit,
+    onRemoveElder: (String) -> Unit,
     @Suppress("UNUSED_PARAMETER") onLogout: () -> Unit
 ) {
     var currentScreen by remember { mutableStateOf("dashboard") }
@@ -89,8 +90,8 @@ fun CaretakerDashboardScreen(
     Box(modifier = Modifier.fillMaxSize().background(DarkBackground)) {
         when (currentScreen) {
             "dashboard" -> DashboardContent(
-                name = caretakerName,
-                address = caretakerAddress,
+                name = caregiverName,
+                address = caregiverAddress,
                 managedElders = managedElders,
                 fontScale = fontScale,
                 selectedImageUri = selectedImageUri,
@@ -108,10 +109,10 @@ fun CaretakerDashboardScreen(
                     currentScreen = "log_detail"
                 }
             )
-            "edit_profile" -> EditCaretakerProfileContent(
-                initialName = caretakerName,
-                initialAddress = caretakerAddress,
-                initialContact = caretakerContact,
+            "edit_profile" -> EditCaregiverProfileContent(
+                initialName = caregiverName,
+                initialAddress = caregiverAddress,
+                initialContact = caregiverContact,
                 fontScale = fontScale,
                 selectedImageUri = selectedImageUri,
                 onImageSelected = { selectedImageUri = it },
@@ -143,6 +144,7 @@ fun CaretakerDashboardScreen(
                 fontScale = fontScale,
                 onBack = { currentScreen = "dashboard" },
                 onAddElder = { currentScreen = "add_elder" },
+                onRemoveElder = onRemoveElder,
                 onSeeLogs = { elder -> 
                     selectedElderForLogs = elder
                     logBackDestination = "elder_management"
@@ -168,7 +170,7 @@ fun CaretakerDashboardScreen(
                 onCallElder = { number -> triggerCall(number) }
             )
             "specific_logs" -> ActivityLogsContent(
-                title = "${selectedElderForLogs?.name}'s History",
+                title = stringResource(R.string.elder_history, selectedElderForLogs?.name ?: ""),
                 specificElderName = selectedElderForLogs?.name,
                 fontScale = fontScale,
                 onBack = { currentScreen = "elder_management" },
@@ -185,7 +187,7 @@ fun CaretakerDashboardScreen(
                 onCallEmergency = { triggerCall("911") }
             )
             "settings" -> SettingsContent(
-                name = caretakerName,
+                name = caregiverName,
                 managedElders = managedElders,
                 fontScale = fontScale,
                 onBack = { 
@@ -206,7 +208,7 @@ fun CaretakerDashboardScreen(
 }
 
 @Composable
-fun Int.caretakerScaledSp(scale: Float): TextUnit = (this * scale).sp
+fun Int.caregiverScaledSp(scale: Float): TextUnit = (this * scale).sp
 
 @Composable
 fun DashboardContent(
@@ -245,7 +247,7 @@ fun DashboardContent(
                     Text(
                         text = stringResource(R.string.system_online),
                         color = PrimaryTeal.copy(alpha = 0.5f),
-                        fontSize = 10.caretakerScaledSp(fontScale),
+                        fontSize = 10.caregiverScaledSp(fontScale),
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 2.sp
                     )
@@ -312,15 +314,15 @@ fun DashboardContent(
                             text = name, 
                             color = Color.Black, 
                             fontWeight = FontWeight.Black, 
-                            fontSize = 20.caretakerScaledSp(fontScale),
+                            fontSize = 20.caregiverScaledSp(fontScale),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        Text(text = stringResource(R.string.caretaker_label), color = PrimaryTeal, fontWeight = FontWeight.Bold, fontSize = 11.caretakerScaledSp(fontScale), letterSpacing = 1.sp)
+                        Text(text = stringResource(R.string.caregiver_label), color = PrimaryTeal, fontWeight = FontWeight.Bold, fontSize = 11.caregiverScaledSp(fontScale), letterSpacing = 1.sp)
                         Text(
                             text = address, 
                             color = Color.Gray, 
-                            fontSize = 12.caretakerScaledSp(fontScale), 
+                            fontSize = 12.caregiverScaledSp(fontScale), 
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -375,11 +377,11 @@ fun DashboardContent(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = stringResource(R.string.safety_alerts), color = Color.White, fontSize = 18.caretakerScaledSp(fontScale), fontWeight = FontWeight.Bold)
+                Text(text = stringResource(R.string.safety_alerts), color = Color.White, fontSize = 18.caregiverScaledSp(fontScale), fontWeight = FontWeight.Bold)
                 Text(
                     text = stringResource(R.string.see_all), 
                     color = PrimaryTeal, 
-                    fontSize = 13.caretakerScaledSp(fontScale), 
+                    fontSize = 13.caregiverScaledSp(fontScale), 
                     modifier = Modifier.clickable { onNavigateToLogs() }
                 )
             }
@@ -403,7 +405,7 @@ fun DashboardContent(
             Text(
                 text = stringResource(R.string.system_secured),
                 color = PrimaryTeal.copy(alpha = 0.3f),
-                fontSize = 12.caretakerScaledSp(fontScale),
+                fontSize = 12.caregiverScaledSp(fontScale),
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.fillMaxWidth().padding(bottom = 30.dp),
                 textAlign = TextAlign.Center
@@ -431,8 +433,8 @@ fun DashboardActionButton(
         Column(modifier = Modifier.padding(15.dp)) {
             Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(28.dp))
             Spacer(modifier = Modifier.height(12.dp))
-            Text(text = title, color = Color.White, fontSize = 15.caretakerScaledSp(fontScale), fontWeight = FontWeight.Bold)
-            Text(text = subtitle, color = Color.White.copy(alpha = 0.5f), fontSize = 11.caretakerScaledSp(fontScale))
+            Text(text = title, color = Color.White, fontSize = 15.caregiverScaledSp(fontScale), fontWeight = FontWeight.Bold)
+            Text(text = subtitle, color = Color.White.copy(alpha = 0.5f), fontSize = 11.caregiverScaledSp(fontScale))
         }
     }
 }
@@ -459,7 +461,7 @@ fun LogDetailContent(
             Text(
                 text = stringResource(R.string.log_analysis),
                 color = Color.White.copy(alpha = 0.3f),
-                fontSize = 14.caretakerScaledSp(fontScale),
+                fontSize = 14.caregiverScaledSp(fontScale),
                 fontWeight = FontWeight.Black,
                 letterSpacing = 2.sp
             )
@@ -509,7 +511,7 @@ fun LogDetailContent(
                 Text(
                     text = log?.title?.uppercase() ?: "TITLE OF THE ALERT",
                     color = Color.White,
-                    fontSize = 28.caretakerScaledSp(fontScale),
+                    fontSize = 28.caregiverScaledSp(fontScale),
                     fontWeight = FontWeight.Black,
                     textAlign = TextAlign.Center,
                     lineHeight = 34.sp
@@ -563,7 +565,7 @@ fun LogDetailContent(
                         Text(
                             text = stringResource(R.string.system_description),
                             color = Color.White.copy(alpha = 0.4f),
-                            fontSize = 10.caretakerScaledSp(fontScale),
+                            fontSize = 10.caregiverScaledSp(fontScale),
                             fontWeight = FontWeight.Black,
                             letterSpacing = 1.sp
                         )
@@ -571,7 +573,7 @@ fun LogDetailContent(
                         Text(
                             text = log?.msg ?: "System detected activity at recorded timestamp.",
                             color = Color.White.copy(alpha = 0.7f),
-                            fontSize = 13.caretakerScaledSp(fontScale),
+                            fontSize = 13.caregiverScaledSp(fontScale),
                             fontWeight = FontWeight.Medium,
                             lineHeight = 18.sp
                         )
@@ -589,7 +591,7 @@ fun LogDetailContent(
                     ) {
                         Icon(Icons.Default.Call, contentDescription = null, tint = Color.White)
                         Spacer(modifier = Modifier.width(10.dp))
-                        Text(stringResource(R.string.call_emergency_btn), color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 14.caretakerScaledSp(fontScale))
+                        Text(stringResource(R.string.call_emergency_btn), color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 14.caregiverScaledSp(fontScale))
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                 }
@@ -601,7 +603,7 @@ fun LogDetailContent(
                     shape = RoundedCornerShape(25.dp),
                     border = BorderStroke(1.dp, PrimaryTeal)
                 ) {
-                    Text(stringResource(R.string.done), color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 14.caretakerScaledSp(fontScale))
+                    Text(stringResource(R.string.done), color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 14.caregiverScaledSp(fontScale))
                 }
             }
         }
@@ -636,7 +638,7 @@ fun IndustrialLogTile(
                 Text(
                     text = title,
                     color = Color.White.copy(alpha = 0.4f),
-                    fontSize = if (compact) 9.caretakerScaledSp(fontScale) else 10.caretakerScaledSp(fontScale),
+                    fontSize = if (compact) 9.caregiverScaledSp(fontScale) else 10.caregiverScaledSp(fontScale),
                     fontWeight = FontWeight.Black,
                     letterSpacing = 1.sp
                 )
@@ -645,7 +647,7 @@ fun IndustrialLogTile(
             Text(
                 text = value,
                 color = Color.White,
-                fontSize = if (compact) 16.caretakerScaledSp(fontScale) else 18.caretakerScaledSp(fontScale),
+                fontSize = if (compact) 16.caregiverScaledSp(fontScale) else 18.caregiverScaledSp(fontScale),
                 fontWeight = FontWeight.Bold,
                 textAlign = if (alignment == Alignment.Start) TextAlign.Start else TextAlign.Center,
                 maxLines = 1
@@ -662,7 +664,7 @@ fun CallListContent(@Suppress("UNUSED_PARAMETER") managedElders: List<ElderlyMem
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = PrimaryTeal)
             }
             Spacer(modifier = Modifier.width(15.dp))
-            Text(text = stringResource(R.string.call_members), color = Color.White, fontSize = 24.caretakerScaledSp(fontScale), fontWeight = FontWeight.Bold)
+            Text(text = stringResource(R.string.call_members), color = Color.White, fontSize = 24.caregiverScaledSp(fontScale), fontWeight = FontWeight.Bold)
         }
 
         LazyColumn(verticalArrangement = Arrangement.spacedBy(15.dp)) {
@@ -678,8 +680,8 @@ fun CallListContent(@Suppress("UNUSED_PARAMETER") managedElders: List<ElderlyMem
                         }
                         Spacer(modifier = Modifier.width(15.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(text = elder.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.caretakerScaledSp(fontScale))
-                            Text(text = elder.status, color = if(elder.status == "Safe") PrimaryTeal else Color.Red, fontSize = 12.caretakerScaledSp(fontScale))
+                            Text(text = elder.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.caregiverScaledSp(fontScale))
+                            Text(text = elder.status, color = if(elder.status == "Safe") PrimaryTeal else Color.Red, fontSize = 12.caregiverScaledSp(fontScale))
                         }
                         IconButton(
                             onClick = { onCallElder(elder.phoneNumber) },
@@ -696,13 +698,41 @@ fun CallListContent(@Suppress("UNUSED_PARAMETER") managedElders: List<ElderlyMem
 
 @Composable
 fun ElderManagementContent(
-    @Suppress("UNUSED_PARAMETER") managedElders: List<ElderlyMember>,
+    managedElders: List<ElderlyMember>,
     fontScale: Float,
     onBack: () -> Unit,
     onAddElder: () -> Unit,
+    onRemoveElder: (String) -> Unit,
     onSeeLogs: (ElderlyMember) -> Unit,
     onSeeProfile: (ElderlyMember) -> Unit
 ) {
+    var isEditMode by remember { mutableStateOf(false) }
+    val elderToRemoveState = remember { mutableStateOf<ElderlyMember?>(null) }
+    val elderToRemove = elderToRemoveState.value
+
+    if (elderToRemove != null) {
+        AlertDialog(
+            onDismissRequest = { elderToRemoveState.value = null },
+            title = { Text(stringResource(R.string.remove_member_title)) },
+            text = { Text(stringResource(R.string.remove_member_msg, elderToRemove.name)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    onRemoveElder(elderToRemove.id)
+                    elderToRemoveState.value = null
+                }) {
+                    Text(stringResource(R.string.remove), color = Color.Red, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { elderToRemoveState.value = null }) {
+                    Text(stringResource(R.string.cancel), color = Color.Gray)
+                }
+            },
+            shape = RoundedCornerShape(20.dp),
+            containerColor = Color.White
+        )
+    }
+
     Scaffold(
         containerColor = Color.Transparent,
         floatingActionButton = {
@@ -722,7 +752,20 @@ fun ElderManagementContent(
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = PrimaryTeal)
                 }
                 Spacer(modifier = Modifier.width(15.dp))
-                Text(text = stringResource(R.string.managed_members), color = Color.White, fontSize = 24.caretakerScaledSp(fontScale), fontWeight = FontWeight.Bold)
+                Text(text = stringResource(R.string.managed_members), color = Color.White, fontSize = 24.caregiverScaledSp(fontScale), fontWeight = FontWeight.Bold)
+                
+                Spacer(modifier = Modifier.weight(1f))
+                
+                IconButton(
+                    onClick = { isEditMode = !isEditMode },
+                    modifier = Modifier.background(if (isEditMode) Color.Red.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.05f), CircleShape)
+                ) {
+                    Icon(
+                        imageVector = if (isEditMode) Icons.Default.Close else Icons.Default.Delete,
+                        contentDescription = "Toggle Delete",
+                        tint = if (isEditMode) Color.Red else Color.White.copy(alpha = 0.6f)
+                    )
+                }
             }
 
             LazyColumn(
@@ -733,6 +776,8 @@ fun ElderManagementContent(
                     ArtisticElderCard(
                         elder = elder,
                         fontScale = fontScale,
+                        isEditMode = isEditMode,
+                        onRemove = { elderToRemoveState.value = elder },
                         onSeeLogs = { onSeeLogs(elder) },
                         onSeeProfile = { onSeeProfile(elder) }
                     )
@@ -756,13 +801,13 @@ fun AddElderContent(
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = PrimaryTeal)
             }
             Spacer(modifier = Modifier.width(15.dp))
-            Text(text = stringResource(R.string.elder_setup), color = Color.White, fontSize = 24.caretakerScaledSp(fontScale), fontWeight = FontWeight.Bold)
+            Text(text = stringResource(R.string.elder_setup), color = Color.White, fontSize = 24.caregiverScaledSp(fontScale), fontWeight = FontWeight.Bold)
         }
         
         Text(
-            text = "LINKING ACCOUNT".uppercase(),
+            text = stringResource(R.string.linking_account),
             color = PrimaryTeal,
-            fontSize = 11.caretakerScaledSp(fontScale),
+            fontSize = 11.caregiverScaledSp(fontScale),
             fontWeight = FontWeight.Black,
             letterSpacing = 2.sp
         )
@@ -776,16 +821,16 @@ fun AddElderContent(
         ) {
             Column(modifier = Modifier.padding(25.dp)) {
                 Text(
-                    text = "Assign Elder via Code",
+                    text = stringResource(R.string.assign_elder_title),
                     color = Color.Black,
-                    fontSize = 22.caretakerScaledSp(fontScale),
+                    fontSize = 22.caregiverScaledSp(fontScale),
                     fontWeight = FontWeight.ExtraBold
                 )
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
-                    text = "Enter the unique 6-digit code generated from the Elder's device to link their account to your dashboard.",
+                    text = stringResource(R.string.assign_elder_desc),
                     color = Color.Gray,
-                    fontSize = 13.caretakerScaledSp(fontScale),
+                    fontSize = 13.caregiverScaledSp(fontScale),
                     lineHeight = 18.sp
                 )
                 
@@ -796,7 +841,7 @@ fun AddElderContent(
                     onValueChange = { 
                         if (it.length <= 6) elderCode = it.uppercase() 
                     },
-                    placeholder = "Enter Elder Code",
+                    placeholder = stringResource(R.string.enter_elder_code),
                     icon = Icons.Default.VpnKey
                 )
                 
@@ -817,7 +862,7 @@ fun AddElderContent(
                     shape = RoundedCornerShape(14.dp),
                     enabled = elderCode.length == 6
                 ) {
-                    Text("ASSIGN MEMBER", fontWeight = FontWeight.Bold, fontSize = 16.caretakerScaledSp(fontScale))
+                    Text(stringResource(R.string.assign_member), fontWeight = FontWeight.Bold, fontSize = 16.caregiverScaledSp(fontScale))
                 }
             }
         }
@@ -857,6 +902,8 @@ fun SleekInputField(
 fun ArtisticElderCard(
     elder: ElderlyMember,
     fontScale: Float,
+    isEditMode: Boolean = false,
+    onRemove: () -> Unit = {},
     onSeeLogs: () -> Unit,
     onSeeProfile: () -> Unit
 ) {
@@ -872,15 +919,24 @@ fun ArtisticElderCard(
                     modifier = Modifier.size(60.dp).clip(RoundedCornerShape(15.dp)).background(PrimaryTeal.copy(alpha = 0.1f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(text = elder.name.take(1), color = PrimaryTeal, fontSize = 24.caretakerScaledSp(fontScale), fontWeight = FontWeight.Black)
+                    Text(text = elder.name.take(1), color = PrimaryTeal, fontSize = 24.caregiverScaledSp(fontScale), fontWeight = FontWeight.Black)
                 }
                 Spacer(modifier = Modifier.width(15.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(text = elder.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.caretakerScaledSp(fontScale))
+                    Text(text = elder.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.caregiverScaledSp(fontScale))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(if(elder.status == "Safe") PrimaryTeal else Color.Red))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text(text = elder.status, color = Color.White.copy(alpha = 0.6f), fontSize = 12.caretakerScaledSp(fontScale))
+                        Text(text = elder.status, color = Color.White.copy(alpha = 0.6f), fontSize = 12.caregiverScaledSp(fontScale))
+                    }
+                }
+                
+                if (isEditMode) {
+                    IconButton(
+                        onClick = onRemove,
+                        modifier = Modifier.background(Color.Red.copy(alpha = 0.2f), CircleShape).size(32.dp)
+                    ) {
+                        Icon(Icons.Default.Close, contentDescription = "Remove", tint = Color.Red, modifier = Modifier.size(16.dp))
                     }
                 }
             }
@@ -895,7 +951,7 @@ fun ArtisticElderCard(
                     shape = RoundedCornerShape(12.dp),
                     border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
                 ) {
-                    Text(stringResource(R.string.profile).uppercase(), fontSize = 12.caretakerScaledSp(fontScale), fontWeight = FontWeight.Bold, color = Color.White)
+                    Text(stringResource(R.string.profile).uppercase(), fontSize = 12.caregiverScaledSp(fontScale), fontWeight = FontWeight.Bold, color = Color.White)
                 }
                 Button(
                     onClick = onSeeLogs,
@@ -903,7 +959,7 @@ fun ArtisticElderCard(
                     colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text(stringResource(R.string.activity).uppercase(), fontSize = 12.caretakerScaledSp(fontScale), fontWeight = FontWeight.Bold, color = Color.White)
+                    Text(stringResource(R.string.activity).uppercase(), fontSize = 12.caregiverScaledSp(fontScale), fontWeight = FontWeight.Bold, color = Color.White)
                 }
             }
         }
@@ -920,7 +976,7 @@ fun ElderProfileContent(elder: ElderlyMember?, fontScale: Float, onBack: () -> U
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = PrimaryTeal)
             }
             Spacer(modifier = Modifier.width(15.dp))
-            Text(text = stringResource(R.string.profile), color = Color.White, fontSize = 24.caretakerScaledSp(fontScale), fontWeight = FontWeight.Bold)
+            Text(text = stringResource(R.string.profile), color = Color.White, fontSize = 24.caregiverScaledSp(fontScale), fontWeight = FontWeight.Bold)
         }
 
         Surface(
@@ -940,16 +996,16 @@ fun ElderProfileContent(elder: ElderlyMember?, fontScale: Float, onBack: () -> U
                     Icon(Icons.Default.Person, contentDescription = null, tint = PrimaryTeal, modifier = Modifier.size(50.dp))
                 }
                 Spacer(modifier = Modifier.height(20.dp))
-                Text(text = elder.name, color = Color.White, fontSize = 24.caretakerScaledSp(fontScale), fontWeight = FontWeight.Black)
-                Text(text = "ID: ${elder.id}", color = PrimaryTeal, fontSize = 12.caretakerScaledSp(fontScale), fontWeight = FontWeight.Bold)
+                Text(text = elder.name, color = Color.White, fontSize = 24.caregiverScaledSp(fontScale), fontWeight = FontWeight.Black)
+                Text(text = "ID: ${elder.id}", color = PrimaryTeal, fontSize = 12.caregiverScaledSp(fontScale), fontWeight = FontWeight.Bold)
                 
                 Spacer(modifier = Modifier.height(40.dp))
                 
-                CaretakerDetailSection(label = stringResource(R.string.phone_number), value = elder.phoneNumber, icon = Icons.Default.Phone, fontScale = fontScale)
+                CaregiverDetailSection(label = stringResource(R.string.phone_number), value = elder.phoneNumber, icon = Icons.Default.Phone, fontScale = fontScale)
                 Spacer(modifier = Modifier.height(20.dp))
-                CaretakerDetailSection(label = stringResource(R.string.address), value = elder.address, icon = Icons.Default.LocationOn, fontScale = fontScale)
+                CaregiverDetailSection(label = stringResource(R.string.address), value = elder.address, icon = Icons.Default.LocationOn, fontScale = fontScale)
                 Spacer(modifier = Modifier.height(20.dp))
-                CaretakerDetailSection(label = stringResource(R.string.status).uppercase(), value = elder.status, icon = Icons.Default.Info, fontScale = fontScale)
+                CaregiverDetailSection(label = stringResource(R.string.status).uppercase(), value = elder.status, icon = Icons.Default.Info, fontScale = fontScale)
                 
                 Spacer(modifier = Modifier.height(40.dp))
 
@@ -961,7 +1017,7 @@ fun ElderProfileContent(elder: ElderlyMember?, fontScale: Float, onBack: () -> U
                 ) {
                     Icon(Icons.Default.Call, contentDescription = null, tint = Color.White)
                     Spacer(modifier = Modifier.width(10.dp))
-                    Text(text = "CALL MEMBER", fontWeight = FontWeight.ExtraBold, fontSize = 16.caretakerScaledSp(fontScale))
+                    Text(text = stringResource(R.string.call_member_caps), fontWeight = FontWeight.ExtraBold, fontSize = 16.caregiverScaledSp(fontScale))
                 }
             }
         }
@@ -970,9 +1026,9 @@ fun ElderProfileContent(elder: ElderlyMember?, fontScale: Float, onBack: () -> U
 }
 
 @Composable
-fun CaretakerDetailSection(label: String, value: String, icon: ImageVector, fontScale: Float) {
+fun CaregiverDetailSection(label: String, value: String, icon: ImageVector, fontScale: Float) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        Text(text = label, color = PrimaryTeal.copy(alpha = 0.6f), fontSize = 10.caretakerScaledSp(fontScale), fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+        Text(text = label, color = PrimaryTeal.copy(alpha = 0.6f), fontSize = 10.caregiverScaledSp(fontScale), fontWeight = FontWeight.Black, letterSpacing = 1.sp)
         Spacer(modifier = Modifier.height(8.dp))
         Surface(
             modifier = Modifier.fillMaxWidth(),
@@ -983,7 +1039,7 @@ fun CaretakerDetailSection(label: String, value: String, icon: ImageVector, font
             Row(modifier = Modifier.padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(icon, contentDescription = null, tint = PrimaryTeal, modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.width(15.dp))
-                Text(text = value, color = Color.White, fontSize = 15.caretakerScaledSp(fontScale), fontWeight = FontWeight.Medium)
+                Text(text = value, color = Color.White, fontSize = 15.caregiverScaledSp(fontScale), fontWeight = FontWeight.Medium)
             }
         }
     }
@@ -1003,10 +1059,10 @@ fun MiniActivityItem(log: LogData, fontScale: Float, onClick: () -> Unit) {
             Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(log.color))
             Spacer(modifier = Modifier.width(15.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = log.title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.caretakerScaledSp(fontScale))
-                Text(text = log.msg, color = Color.White.copy(alpha = 0.5f), fontSize = 11.caretakerScaledSp(fontScale))
+                Text(text = log.title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.caregiverScaledSp(fontScale))
+                Text(text = log.msg, color = Color.White.copy(alpha = 0.5f), fontSize = 11.caregiverScaledSp(fontScale))
             }
-            Text(text = log.time, color = Color.White.copy(alpha = 0.3f), fontSize = 11.caretakerScaledSp(fontScale))
+            Text(text = log.time, color = Color.White.copy(alpha = 0.3f), fontSize = 11.caregiverScaledSp(fontScale))
         }
     }
 }
@@ -1040,7 +1096,7 @@ fun ActivityLogsContent(
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = PrimaryTeal)
             }
             Spacer(modifier = Modifier.width(15.dp))
-            Text(text = title, color = Color.White, fontSize = 22.caretakerScaledSp(fontScale), fontWeight = FontWeight.Bold)
+            Text(text = title, color = Color.White, fontSize = 22.caregiverScaledSp(fontScale), fontWeight = FontWeight.Bold)
         }
 
         LazyColumn(verticalArrangement = Arrangement.spacedBy(15.dp)) {
@@ -1064,9 +1120,9 @@ fun ModernLogTile(log: LogData, fontScale: Float, onClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = log.time, color = Color.White.copy(alpha = 0.4f), fontSize = 11.caretakerScaledSp(fontScale))
-                Text(text = log.title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.caretakerScaledSp(fontScale))
-                Text(text = log.msg, color = Color.White.copy(alpha = 0.6f), fontSize = 13.caretakerScaledSp(fontScale))
+                Text(text = log.time, color = Color.White.copy(alpha = 0.4f), fontSize = 11.caregiverScaledSp(fontScale))
+                Text(text = log.title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.caregiverScaledSp(fontScale))
+                Text(text = log.msg, color = Color.White.copy(alpha = 0.6f), fontSize = 13.caregiverScaledSp(fontScale))
             }
             Icon(Icons.Default.ChevronRight, contentDescription = null, tint = PrimaryTeal.copy(alpha = 0.5f))
         }
@@ -1088,10 +1144,10 @@ fun SettingsContent(
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = PrimaryTeal)
             }
             Spacer(modifier = Modifier.width(15.dp))
-            Text(text = stringResource(R.string.settings), color = Color.White, fontSize = 24.caretakerScaledSp(fontScale), fontWeight = FontWeight.Bold)
+            Text(text = stringResource(R.string.settings), color = Color.White, fontSize = 24.caregiverScaledSp(fontScale), fontWeight = FontWeight.Bold)
         }
 
-        Text(text = stringResource(R.string.system_preferences), color = PrimaryTeal, fontSize = 11.caretakerScaledSp(fontScale), fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+        Text(text = stringResource(R.string.system_preferences), color = PrimaryTeal, fontSize = 11.caregiverScaledSp(fontScale), fontWeight = FontWeight.Black, letterSpacing = 2.sp)
         Spacer(modifier = Modifier.height(15.dp))
         
         SettingsTile(Icons.Default.TextFormat, stringResource(R.string.font_size), stringResource(R.string.change_font_size), fontScale, onClick = onNavigateToFontSize)
@@ -1105,11 +1161,11 @@ fun SettingsContent(
             colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal),
             shape = RoundedCornerShape(20.dp)
         ) {
-            Text(stringResource(R.string.done), fontWeight = FontWeight.ExtraBold, color = Color.White, fontSize = 18.caretakerScaledSp(fontScale))
+            Text(stringResource(R.string.done), fontWeight = FontWeight.ExtraBold, color = Color.White, fontSize = 18.caregiverScaledSp(fontScale))
         }
 
         TextButton(onClick = onLogout, modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp)) {
-            Text(stringResource(R.string.logout), color = Color(0xFFFF4B4B), fontWeight = FontWeight.Bold, fontSize = 16.caretakerScaledSp(fontScale))
+            Text(stringResource(R.string.logout), color = Color(0xFFFF4B4B), fontWeight = FontWeight.Bold, fontSize = 16.caregiverScaledSp(fontScale))
         }
     }
 }
@@ -1123,8 +1179,8 @@ fun SettingsTile(icon: ImageVector, title: String, value: String, fontScale: Flo
         Icon(icon, contentDescription = null, tint = PrimaryTeal, modifier = Modifier.size(20.dp))
         Spacer(modifier = Modifier.width(15.dp))
         Column {
-            Text(text = title, color = Color.White.copy(alpha = 0.5f), fontSize = 11.caretakerScaledSp(fontScale))
-            Text(text = value, color = Color.White, fontSize = 15.caretakerScaledSp(fontScale), fontWeight = FontWeight.Medium)
+            Text(text = title, color = Color.White.copy(alpha = 0.5f), fontSize = 11.caregiverScaledSp(fontScale))
+            Text(text = value, color = Color.White, fontSize = 15.caregiverScaledSp(fontScale), fontWeight = FontWeight.Medium)
         }
     }
 }
@@ -1137,7 +1193,7 @@ fun FontSizeSelectionContent(currentFontSize: String, fontScale: Float, onFontSi
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = PrimaryTeal)
             }
             Spacer(modifier = Modifier.width(15.dp))
-            Text(text = stringResource(R.string.font_size), color = Color.White, fontSize = 24.caretakerScaledSp(fontScale), fontWeight = FontWeight.Bold)
+            Text(text = stringResource(R.string.font_size), color = Color.White, fontSize = 24.caregiverScaledSp(fontScale), fontWeight = FontWeight.Bold)
         }
         LanguageRadioTile(stringResource(R.string.small), currentFontSize == "Small", fontScale, onClick = { onFontSizeSelected("Small") })
         Spacer(modifier = Modifier.height(15.dp))
@@ -1156,14 +1212,14 @@ fun LanguageRadioTile(label: String, isSelected: Boolean, fontScale: Float, onCl
         border = BorderStroke(1.dp, if (isSelected) PrimaryTeal else Color.Transparent)
     ) {
         Row(modifier = Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(text = label, color = Color.White, fontSize = 18.caretakerScaledSp(fontScale), fontWeight = FontWeight.Bold)
+            Text(text = label, color = Color.White, fontSize = 18.caregiverScaledSp(fontScale), fontWeight = FontWeight.Bold)
             RadioButton(selected = isSelected, onClick = onClick, colors = RadioButtonDefaults.colors(selectedColor = PrimaryTeal))
         }
     }
 }
 
 @Composable
-fun EditCaretakerProfileContent(
+fun EditCaregiverProfileContent(
     initialName: String,
     initialAddress: String,
     initialContact: String,
@@ -1189,7 +1245,7 @@ fun EditCaretakerProfileContent(
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = PrimaryTeal)
             }
             Spacer(modifier = Modifier.width(15.dp))
-            Text(text = stringResource(R.string.profile), color = Color.White, fontSize = 24.caretakerScaledSp(fontScale), fontWeight = FontWeight.Bold)
+            Text(text = stringResource(R.string.profile), color = Color.White, fontSize = 24.caregiverScaledSp(fontScale), fontWeight = FontWeight.Bold)
         }
         
         SleekInputFieldWhite(value = name, onValueChange = { name = it }, placeholder = stringResource(R.string.full_name), icon = Icons.Default.Badge)
@@ -1202,9 +1258,9 @@ fun EditCaretakerProfileContent(
 
         // Profile Picture Section - Single Button implementation
         Text(
-            text = "PROFILE PICTURE",
+            text = stringResource(R.string.profile_picture_caps),
             color = PrimaryTeal,
-            fontSize = 11.caretakerScaledSp(fontScale),
+            fontSize = 11.caregiverScaledSp(fontScale),
             fontWeight = FontWeight.Black,
             letterSpacing = 2.sp
         )
@@ -1243,15 +1299,15 @@ fun EditCaretakerProfileContent(
                 
                 Column {
                     Text(
-                        text = if (selectedImageUri == null) "Select Profile Photo" else "Change Photo",
+                        text = if (selectedImageUri == null) stringResource(R.string.select_profile_photo) else stringResource(R.string.change_photo),
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 16.caretakerScaledSp(fontScale)
+                        fontSize = 16.caregiverScaledSp(fontScale)
                     )
                     Text(
-                        text = "Tap to browse gallery",
+                        text = stringResource(R.string.tap_to_browse),
                         color = PrimaryTeal,
-                        fontSize = 12.caretakerScaledSp(fontScale)
+                        fontSize = 12.caregiverScaledSp(fontScale)
                     )
                 }
                 
@@ -1273,7 +1329,7 @@ fun EditCaretakerProfileContent(
             colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal),
             shape = RoundedCornerShape(20.dp)
         ) {
-            Text(stringResource(R.string.update), fontWeight = FontWeight.ExtraBold, color = Color.White, fontSize = 18.caretakerScaledSp(fontScale))
+            Text(stringResource(R.string.update), fontWeight = FontWeight.ExtraBold, color = Color.White, fontSize = 18.caregiverScaledSp(fontScale))
         }
     }
 }
