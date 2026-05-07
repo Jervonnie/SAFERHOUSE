@@ -1,9 +1,13 @@
 package com.example.saferhouseui
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -31,9 +35,21 @@ import com.example.saferhouseui.viewmodel.ElderlyViewModel
 import com.example.saferhouseui.viewmodel.UserPreferenceViewModel
 
 class MainActivity : AppCompatActivity() {
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val allGranted = permissions.entries.all { it.value }
+        if (allGranted) {
+            // Permissions granted
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        
+        checkAndRequestPermissions()
+
         setContent {
             val prefViewModel: UserPreferenceViewModel = viewModel()
             val authViewModel: AuthViewModel = viewModel()
@@ -68,6 +84,22 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
+        }
+    }
+
+    private fun checkAndRequestPermissions() {
+        val permissions = arrayOf(
+            Manifest.permission.SEND_SMS,
+            Manifest.permission.CALL_PHONE,
+            Manifest.permission.RECORD_AUDIO
+        )
+        
+        val missingPermissions = permissions.filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
+
+        if (missingPermissions.isNotEmpty()) {
+            requestPermissionLauncher.launch(missingPermissions.toTypedArray())
         }
     }
 }
@@ -120,9 +152,6 @@ fun AppNavigation(
 ) {
     val navController = rememberNavController()
     val currentUser = authViewModel.currentUser
-
-    // Listen to changes in currentUser to reactively update navigation if needed
-    // but usually handled by manual navigation calls.
 
     NavHost(navController = navController, startDestination = "login") {
         composable("login") {
@@ -182,7 +211,7 @@ fun AppNavigation(
                     if (role == "caregiver") {
                         caregiverViewModel.updateProfile(name, address, contact)
                     } else {
-                        elderlyViewModel.updateProfile(name, age, address, contact)
+                        elderlyViewModel.updateProfile(name, address, contact)
                     }
                     authViewModel.logout()
                     navController.navigate("login") {

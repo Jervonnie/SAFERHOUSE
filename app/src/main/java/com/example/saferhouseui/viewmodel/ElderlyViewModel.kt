@@ -2,10 +2,10 @@ package com.example.saferhouseui.viewmodel
 
 import android.app.Application
 import android.content.Intent
-import android.net.Uri
 import android.telephony.SmsManager
 import android.util.Log
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
@@ -13,6 +13,7 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.core.net.toUri
 
 class ElderlyViewModel(
     application: Application,
@@ -27,7 +28,7 @@ class ElderlyViewModel(
     var isConfirmationDialogOpen by mutableStateOf(false)
         private set
 
-    var countdownValue by mutableStateOf(10)
+    var countdownValue by mutableIntStateOf(10)
         private set
 
     // Indicates if the audio distress feature is running in background
@@ -111,7 +112,7 @@ class ElderlyViewModel(
         // Automated Call
         try {
             val intent = Intent(Intent.ACTION_CALL).apply {
-                data = Uri.parse("tel:$contact")
+                data = "tel:$contact".toUri()
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             getApplication<Application>().startActivity(intent)
@@ -130,7 +131,7 @@ class ElderlyViewModel(
         }
     }
 
-    fun updateProfile(name: String, age: String, address: String, contact: String) {
+    fun updateProfile(name: String, address: String, contact: String) {
         authViewModel.currentUser?.let { user ->
             authViewModel.updateUser(
                 user.copy(
