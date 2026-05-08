@@ -994,7 +994,7 @@ fun ElderProfileContent(elder: ElderlyMember?, fontScale: Float, onBack: () -> U
                 Spacer(modifier = Modifier.height(20.dp))
                 CaregiverDetailSection(label = stringResource(R.string.address), value = elder.address, icon = Icons.Default.LocationOn, fontScale = fontScale)
                 Spacer(modifier = Modifier.height(20.dp))
-                CaregiverDetailSection(label = stringResource(R.string.status).uppercase(), value = elder.status, icon = Icons.Default.Info, fontScale = fontScale)
+                CaregiverDetailSection(label = stringResource(R.string.phone_number), value = elder.phoneNumber, icon = Icons.Default.Phone, fontScale = fontScale)
                 
                 Spacer(modifier = Modifier.height(40.dp))
 
