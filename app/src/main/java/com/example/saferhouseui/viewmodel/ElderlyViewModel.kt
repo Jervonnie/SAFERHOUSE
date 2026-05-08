@@ -109,7 +109,8 @@ class ElderlyViewModel(
             Log.e("ElderlyViewModel", "Failed to send SMS: ${e.message}")
         }
 
-        // Automated Call
+        // Automated Call - In a real app this would call the caregiver, 
+        // but per instructions we keep it to automated call to contact
         try {
             val intent = Intent(Intent.ACTION_CALL).apply {
                 data = "tel:$contact".toUri()
@@ -126,8 +127,8 @@ class ElderlyViewModel(
             // Option to reset state if already active
             isEmergencyActive = false
         } else {
-            // Manual trigger starts the same process as audio detection
-            triggerEmergency()
+            // Manual SOS button - zero trust, immediate escalation
+            confirmEmergency()
         }
     }
 

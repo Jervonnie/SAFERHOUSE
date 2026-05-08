@@ -101,7 +101,7 @@ fun CaregiverDashboardScreen(
                     currentScreen = "logs" 
                 },
                 onNavigateToSettings = { currentScreen = "settings" },
-                onNavigateToCallList = { triggerCall("") },
+                onNavigateToCallList = { currentScreen = "call_list" },
                 onNavigateToManagement = { currentScreen = "elder_management" },
                 onNavigateToEditProfile = { currentScreen = "edit_profile" },
                 onLogClick = { log ->
@@ -138,7 +138,15 @@ fun CaregiverDashboardScreen(
                 managedElders = managedElders,
                 fontScale = fontScale,
                 onBack = { currentScreen = "dashboard" },
-                onCallElder = { number -> triggerCall(number) }
+                onCallElder = { number -> 
+                    if (number.isNotEmpty()) {
+                        triggerCall(number)
+                    } else {
+                        // Just open dialer if no number provided (e.g. from general dialer button)
+                        val intent = Intent(Intent.ACTION_DIAL)
+                        context.startActivity(intent)
+                    }
+                }
             )
             "elder_management" -> ElderManagementContent(
                 managedElders = managedElders,
@@ -563,14 +571,14 @@ fun LogDetailContent(
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.clickable {
-                                log?.location?.let { coords ->
+                                log?.location?.let { coordinates ->
                                     try {
-                                        val gmmIntentUri = "geo:0,0?q=$coords".toUri()
+                                        val gmmIntentUri = "geo:0,0?q=$coordinates".toUri()
                                         val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
                                         mapIntent.setPackage("com.google.android.apps.maps")
                                         context.startActivity(mapIntent)
                                     } catch (_: Exception) {
-                                        val browserIntent = Intent(Intent.ACTION_VIEW, "https://www.google.com/maps/search/?api=1&query=$coords".toUri())
+                                        val browserIntent = Intent(Intent.ACTION_VIEW, "https://www.google.com/maps/search/?api=1&query=$coordinates".toUri())
                                         context.startActivity(browserIntent)
                                     }
                                 }
@@ -681,6 +689,35 @@ fun CallListContent(@Suppress("UNUSED_PARAMETER") managedElders: List<ElderlyMem
             }
             Spacer(modifier = Modifier.width(15.dp))
             Text(text = stringResource(R.string.call_members), color = Color.White, fontSize = 24.caregiverScaledSp(fontScale), fontWeight = FontWeight.Bold)
+        }
+
+        Surface(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 15.dp),
+            color = Color(0xFFFF4B4B).copy(alpha = 0.1f),
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(1.dp, Color(0xFFFF4B4B).copy(alpha = 0.3f))
+        ) {
+            Row(modifier = Modifier.padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(modifier = Modifier.size(45.dp).clip(CircleShape).background(Color(0xFFFF4B4B).copy(alpha = 0.2f)), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.Emergency, contentDescription = null, tint = Color(0xFFFF4B4B))
+                }
+                Spacer(modifier = Modifier.width(15.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = "Emergency Services", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.caregiverScaledSp(fontScale))
+                    Text(text = "Dial 911 for immediate help", color = Color(0xFFFF4B4B), fontSize = 12.caregiverScaledSp(fontScale))
+                }
+                IconButton(
+                    onClick = { 
+                        val intent = Intent(Intent.ACTION_DIAL).apply {
+                            data = "tel:911".toUri()
+                        }
+                        onCallElder("911") // Reusing the callback to trigger the dialer
+                    },
+                    modifier = Modifier.background(Color(0xFFFF4B4B), CircleShape)
+                ) {
+                    Icon(Icons.Default.Call, contentDescription = "Call 911", tint = Color.White)
+                }
+            }
         }
 
         LazyColumn(verticalArrangement = Arrangement.spacedBy(15.dp)) {
