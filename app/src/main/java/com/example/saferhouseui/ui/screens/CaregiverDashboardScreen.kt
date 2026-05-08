@@ -46,7 +46,7 @@ import com.example.saferhouseui.ui.theme.PrimaryTeal
 data class LogData(
     val color: Color,
     val title: String,
-    val msg: String,
+    val location: String,
     val time: String,
     val elderName: String = "Unknown Member",
     val age: String = ""
@@ -390,8 +390,8 @@ fun DashboardContent(
                 val log2Name = elder2?.name ?: "Lola Maria"
                 val log2Age = elder2?.age ?: "75"
                 val demoLogs = listOf(
-                    LogData(Color(0xFF00C49A), "Safe Check", "$log1Name confirmed check-in", "Now", log1Name, log1Age),
-                    LogData(Color(0xFFFFB800), "Fall Alert", "Possible fall detected for $log2Name", "12m ago", log2Name, log2Age)
+                    LogData(Color(0xFF00C49A), "Safe Check", "14.5995, 120.9842", "Now", log1Name, log1Age),
+                    LogData(Color(0xFFFFB800), "Fall Alert", "14.6012, 120.9855", "12m ago", log2Name, log2Age)
                 )
                 demoLogs.forEach { log ->
                     MiniActivityItem(log, fontScale, onClick = { onLogClick(log) })
@@ -435,6 +435,7 @@ fun LogDetailContent(
     onBack: () -> Unit,
     onCallEmergency: () -> Unit
 ) {
+    val context = LocalContext.current
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -552,19 +553,45 @@ fun LogDetailContent(
                         horizontalAlignment = Alignment.Start
                     ) {
                         Text(
-                            text = stringResource(R.string.system_description),
+                            text = "LOCATION COORDINATES",
                             color = Color.White.copy(alpha = 0.4f),
                             fontSize = 10.caregiverScaledSp(fontScale),
                             fontWeight = FontWeight.Black,
                             letterSpacing = 1.sp
                         )
                         Spacer(modifier = Modifier.height(10.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.clickable {
+                                log?.location?.let { coords ->
+                                    try {
+                                        val gmmIntentUri = "geo:0,0?q=$coords".toUri()
+                                        val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
+                                        mapIntent.setPackage("com.google.android.apps.maps")
+                                        context.startActivity(mapIntent)
+                                    } catch (_: Exception) {
+                                        val browserIntent = Intent(Intent.ACTION_VIEW, "https://www.google.com/maps/search/?api=1&query=$coords".toUri())
+                                        context.startActivity(browserIntent)
+                                    }
+                                }
+                            }
+                        ) {
+                            Icon(Icons.Default.LocationOn, contentDescription = null, tint = PrimaryTeal, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = log?.location ?: "No Coordinates Available",
+                                color = PrimaryTeal,
+                                fontSize = 16.caregiverScaledSp(fontScale),
+                                fontWeight = FontWeight.ExtraBold,
+                                lineHeight = 20.sp
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
                         Text(
-                            text = log?.msg ?: "System detected activity at recorded timestamp.",
-                            color = Color.White.copy(alpha = 0.7f),
-                            fontSize = 13.caregiverScaledSp(fontScale),
-                            fontWeight = FontWeight.Medium,
-                            lineHeight = 18.sp
+                            text = "Tap coordinates to view on Google Maps",
+                            color = Color.White.copy(alpha = 0.3f),
+                            fontSize = 10.caregiverScaledSp(fontScale),
+                            fontWeight = FontWeight.Medium
                         )
                     }
                 }
@@ -1049,7 +1076,7 @@ fun MiniActivityItem(log: LogData, fontScale: Float, onClick: () -> Unit) {
             Spacer(modifier = Modifier.width(15.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = log.title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.caregiverScaledSp(fontScale))
-                Text(text = log.msg, color = Color.White.copy(alpha = 0.5f), fontSize = 11.caregiverScaledSp(fontScale))
+                Text(text = log.location, color = Color.White.copy(alpha = 0.5f), fontSize = 11.caregiverScaledSp(fontScale))
             }
             Text(text = log.time, color = Color.White.copy(alpha = 0.3f), fontSize = 11.caregiverScaledSp(fontScale))
         }
@@ -1069,8 +1096,8 @@ fun ActivityLogsContent(
         val elder = managedElders.find { it.name == specificElderName }
         val age = elder?.age ?: "82"
         listOf(
-            LogData(PrimaryTeal, "Fall Detected", "$specificElderName - Living Room Alert", "14:02", specificElderName, age),
-            LogData(Color(0xFFFFB800), "Activity Detected", "$specificElderName is moving", "12:45", specificElderName, age)
+            LogData(PrimaryTeal, "Fall Detected", "14.5995, 120.9842", "14:02", specificElderName, age),
+            LogData(Color(0xFFFFB800), "Activity Detected", "14.6012, 120.9855", "12:45", specificElderName, age)
         )
     } else {
         val elder1 = managedElders.getOrNull(0)
@@ -1080,8 +1107,8 @@ fun ActivityLogsContent(
         val name2 = elder2?.name ?: "Lola Maria"
         val age2 = elder2?.age ?: "75"
         listOf(
-            LogData(PrimaryTeal, "Fall Detected", "$name1 - Living Room Alert", "14:02", name1, age1),
-            LogData(Color(0xFFFFB800), "Activity Detected", "$name2 - Bedroom Activity", "12:45", name2, age2)
+            LogData(PrimaryTeal, "Fall Detected", "14.5995, 120.9842", "14:02", name1, age1),
+            LogData(Color(0xFFFFB800), "Activity Detected", "14.6012, 120.9855", "12:45", name2, age2)
         )
     }
 
@@ -1117,7 +1144,7 @@ fun ModernLogTile(log: LogData, fontScale: Float, onClick: () -> Unit) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = log.time, color = Color.White.copy(alpha = 0.4f), fontSize = 11.caregiverScaledSp(fontScale))
                 Text(text = log.title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.caregiverScaledSp(fontScale))
-                Text(text = log.msg, color = Color.White.copy(alpha = 0.6f), fontSize = 13.caregiverScaledSp(fontScale))
+                Text(text = log.location, color = Color.White.copy(alpha = 0.6f), fontSize = 13.caregiverScaledSp(fontScale))
             }
             Icon(Icons.Default.ChevronRight, contentDescription = null, tint = PrimaryTeal.copy(alpha = 0.5f))
         }
