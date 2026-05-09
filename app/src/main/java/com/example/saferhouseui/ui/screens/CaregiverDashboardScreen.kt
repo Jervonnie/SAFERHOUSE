@@ -46,9 +46,10 @@ import com.example.saferhouseui.ui.theme.PrimaryTeal
 data class LogData(
     val color: Color,
     val title: String,
-    val msg: String,
+    val location: String,
     val time: String,
-    val elderName: String = "Unknown Member"
+    val elderName: String = "Unknown Member",
+    val age: String = ""
 )
 
 @Composable
@@ -100,7 +101,7 @@ fun CaregiverDashboardScreen(
                     currentScreen = "logs" 
                 },
                 onNavigateToSettings = { currentScreen = "settings" },
-                onNavigateToCallList = { triggerCall("911") },
+                onNavigateToCallList = { triggerCall("") },
                 onNavigateToManagement = { currentScreen = "elder_management" },
                 onNavigateToEditProfile = { currentScreen = "edit_profile" },
                 onLogClick = { log ->
@@ -184,7 +185,7 @@ fun CaregiverDashboardScreen(
                 log = selectedLog,
                 fontScale = fontScale,
                 onBack = { currentScreen = logBackDestination },
-                onCallEmergency = { triggerCall("911") }
+                onCallEmergency = { triggerCall("") }
             )
             "settings" -> SettingsContent(
                 name = caregiverName,
@@ -243,13 +244,6 @@ fun DashboardContent(
                         fontSize = 26.sp,
                         fontWeight = FontWeight.ExtraBold,
                         letterSpacing = (-1).sp
-                    )
-                    Text(
-                        text = stringResource(R.string.system_online),
-                        color = PrimaryTeal.copy(alpha = 0.5f),
-                        fontSize = 10.caregiverScaledSp(fontScale),
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 2.sp
                     )
                 }
                 IconButton(
@@ -389,11 +383,15 @@ fun DashboardContent(
             Spacer(modifier = Modifier.height(15.dp))
 
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                val log1Name = managedElders.getOrNull(0)?.name ?: "Lolo Mao"
-                val log2Name = managedElders.getOrNull(1)?.name ?: "Lola Maria"
+                val elder1 = managedElders.getOrNull(0)
+                val elder2 = managedElders.getOrNull(1)
+                val log1Name = elder1?.name ?: "Lolo Mao"
+                val log1Age = elder1?.age ?: "82"
+                val log2Name = elder2?.name ?: "Lola Maria"
+                val log2Age = elder2?.age ?: "75"
                 val demoLogs = listOf(
-                    LogData(Color(0xFF00C49A), "Safe Check", "$log1Name confirmed check-in", "Now", log1Name),
-                    LogData(Color(0xFFFFB800), "Fall Alert", "Possible fall detected for $log2Name", "12m ago", log2Name)
+                    LogData(Color(0xFF00C49A), "Safe Check", "14.5995, 120.9842", "Now", log1Name, log1Age),
+                    LogData(Color(0xFFFFB800), "Fall Alert", "14.6012, 120.9855", "12m ago", log2Name, log2Age)
                 )
                 demoLogs.forEach { log ->
                     MiniActivityItem(log, fontScale, onClick = { onLogClick(log) })
@@ -401,15 +399,6 @@ fun DashboardContent(
             }
 
             Spacer(modifier = Modifier.weight(1f))
-
-            Text(
-                text = stringResource(R.string.system_secured),
-                color = PrimaryTeal.copy(alpha = 0.3f),
-                fontSize = 12.caregiverScaledSp(fontScale),
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.fillMaxWidth().padding(bottom = 30.dp),
-                textAlign = TextAlign.Center
-            )
         }
     }
 }
@@ -446,6 +435,7 @@ fun LogDetailContent(
     onBack: () -> Unit,
     onCallEmergency: () -> Unit
 ) {
+    val context = LocalContext.current
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -530,10 +520,10 @@ fun LogDetailContent(
                     )
                     IndustrialLogTile(
                         modifier = Modifier.weight(1f),
-                        title = stringResource(R.string.status),
-                        value = if (log?.color == Color.Red) stringResource(R.string.urgent) else stringResource(R.string.resolved),
-                        icon = Icons.Default.Info,
-                        color = log?.color ?: PrimaryTeal,
+                        title = stringResource(R.string.Age),
+                        value = log?.age ?: "",
+                        icon = Icons.Default.Cake,
+                        color = PrimaryTeal,
                         fontScale = fontScale,
                         compact = true
                     )
@@ -563,19 +553,45 @@ fun LogDetailContent(
                         horizontalAlignment = Alignment.Start
                     ) {
                         Text(
-                            text = stringResource(R.string.system_description),
+                            text = "LOCATION COORDINATES",
                             color = Color.White.copy(alpha = 0.4f),
                             fontSize = 10.caregiverScaledSp(fontScale),
                             fontWeight = FontWeight.Black,
                             letterSpacing = 1.sp
                         )
                         Spacer(modifier = Modifier.height(10.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.clickable {
+                                log?.location?.let { coords ->
+                                    try {
+                                        val gmmIntentUri = "geo:0,0?q=$coords".toUri()
+                                        val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
+                                        mapIntent.setPackage("com.google.android.apps.maps")
+                                        context.startActivity(mapIntent)
+                                    } catch (_: Exception) {
+                                        val browserIntent = Intent(Intent.ACTION_VIEW, "https://www.google.com/maps/search/?api=1&query=$coords".toUri())
+                                        context.startActivity(browserIntent)
+                                    }
+                                }
+                            }
+                        ) {
+                            Icon(Icons.Default.LocationOn, contentDescription = null, tint = PrimaryTeal, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = log?.location ?: "No Coordinates Available",
+                                color = PrimaryTeal,
+                                fontSize = 16.caregiverScaledSp(fontScale),
+                                fontWeight = FontWeight.ExtraBold,
+                                lineHeight = 20.sp
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
                         Text(
-                            text = log?.msg ?: "System detected activity at recorded timestamp.",
-                            color = Color.White.copy(alpha = 0.7f),
-                            fontSize = 13.caregiverScaledSp(fontScale),
-                            fontWeight = FontWeight.Medium,
-                            lineHeight = 18.sp
+                            text = "Tap coordinates to view on Google Maps",
+                            color = Color.White.copy(alpha = 0.3f),
+                            fontSize = 10.caregiverScaledSp(fontScale),
+                            fontWeight = FontWeight.Medium
                         )
                     }
                 }
@@ -1001,11 +1017,11 @@ fun ElderProfileContent(elder: ElderlyMember?, fontScale: Float, onBack: () -> U
                 
                 Spacer(modifier = Modifier.height(40.dp))
                 
-                CaregiverDetailSection(label = stringResource(R.string.phone_number), value = elder.phoneNumber, icon = Icons.Default.Phone, fontScale = fontScale)
+                CaregiverDetailSection(label = stringResource(R.string.Age), value = elder.age, icon = Icons.Default.Cake, fontScale = fontScale)
                 Spacer(modifier = Modifier.height(20.dp))
                 CaregiverDetailSection(label = stringResource(R.string.address), value = elder.address, icon = Icons.Default.LocationOn, fontScale = fontScale)
                 Spacer(modifier = Modifier.height(20.dp))
-                CaregiverDetailSection(label = stringResource(R.string.status).uppercase(), value = elder.status, icon = Icons.Default.Info, fontScale = fontScale)
+                CaregiverDetailSection(label = stringResource(R.string.phone_number), value = elder.phoneNumber, icon = Icons.Default.Phone, fontScale = fontScale)
                 
                 Spacer(modifier = Modifier.height(40.dp))
 
@@ -1060,7 +1076,7 @@ fun MiniActivityItem(log: LogData, fontScale: Float, onClick: () -> Unit) {
             Spacer(modifier = Modifier.width(15.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = log.title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.caregiverScaledSp(fontScale))
-                Text(text = log.msg, color = Color.White.copy(alpha = 0.5f), fontSize = 11.caregiverScaledSp(fontScale))
+                Text(text = log.location, color = Color.White.copy(alpha = 0.5f), fontSize = 11.caregiverScaledSp(fontScale))
             }
             Text(text = log.time, color = Color.White.copy(alpha = 0.3f), fontSize = 11.caregiverScaledSp(fontScale))
         }
@@ -1077,16 +1093,22 @@ fun ActivityLogsContent(
     onLogClick: (LogData) -> Unit
 ) {
     val logs = if (specificElderName != null) {
+        val elder = managedElders.find { it.name == specificElderName }
+        val age = elder?.age ?: "82"
         listOf(
-            LogData(PrimaryTeal, "Fall Detected", "$specificElderName - Living Room Alert", "14:02", specificElderName),
-            LogData(Color(0xFFFFB800), "Activity Detected", "$specificElderName is moving", "12:45", specificElderName)
+            LogData(PrimaryTeal, "Fall Detected", "14.5995, 120.9842", "14:02", specificElderName, age),
+            LogData(Color(0xFFFFB800), "Activity Detected", "14.6012, 120.9855", "12:45", specificElderName, age)
         )
     } else {
-        val name1 = managedElders.getOrNull(0)?.name ?: "Lolo Mao"
-        val name2 = managedElders.getOrNull(1)?.name ?: "Lola Maria"
+        val elder1 = managedElders.getOrNull(0)
+        val elder2 = managedElders.getOrNull(1)
+        val name1 = elder1?.name ?: "Lolo Mao"
+        val age1 = elder1?.age ?: "82"
+        val name2 = elder2?.name ?: "Lola Maria"
+        val age2 = elder2?.age ?: "75"
         listOf(
-            LogData(PrimaryTeal, "Fall Detected", "$name1 - Living Room Alert", "14:02", name1),
-            LogData(Color(0xFFFFB800), "Activity Detected", "$name2 - Bedroom Activity", "12:45", name2)
+            LogData(PrimaryTeal, "Fall Detected", "14.5995, 120.9842", "14:02", name1, age1),
+            LogData(Color(0xFFFFB800), "Activity Detected", "14.6012, 120.9855", "12:45", name2, age2)
         )
     }
 
@@ -1122,7 +1144,7 @@ fun ModernLogTile(log: LogData, fontScale: Float, onClick: () -> Unit) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = log.time, color = Color.White.copy(alpha = 0.4f), fontSize = 11.caregiverScaledSp(fontScale))
                 Text(text = log.title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.caregiverScaledSp(fontScale))
-                Text(text = log.msg, color = Color.White.copy(alpha = 0.6f), fontSize = 13.caregiverScaledSp(fontScale))
+                Text(text = log.location, color = Color.White.copy(alpha = 0.6f), fontSize = 13.caregiverScaledSp(fontScale))
             }
             Icon(Icons.Default.ChevronRight, contentDescription = null, tint = PrimaryTeal.copy(alpha = 0.5f))
         }
@@ -1335,7 +1357,13 @@ fun EditCaregiverProfileContent(
 }
 
 @Composable
-fun SleekInputFieldWhite(value: String, onValueChange: (String) -> Unit, placeholder: String, icon: ImageVector) {
+fun SleekInputFieldWhite(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    icon: ImageVector,
+    keyboardType: KeyboardType = KeyboardType.Text
+) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
@@ -1344,6 +1372,7 @@ fun SleekInputFieldWhite(value: String, onValueChange: (String) -> Unit, placeho
         leadingIcon = { Icon(imageVector = icon, contentDescription = null, tint = PrimaryTeal) },
         shape = RoundedCornerShape(16.dp),
         singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = PrimaryTeal,
             unfocusedBorderColor = Color.White.copy(alpha = 0.1f),

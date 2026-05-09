@@ -7,12 +7,12 @@
     <string name="settings">Mga Setting</string>
     <string name="logout">Mag-logout</string>
     <string name="welcome">Maligayang pagbabalik, %1$s</string>
-    <string name="fall_detection">Pagtukoy sa Tumba</string>
     <string name="status_active">Aktibo ang System</string>
     <string name="last_fall">Huling tumba: Wala</string>
     <string name="sos_button">PINDUTIN PARA SA SOS</string>
     <string name="language">Wika</string>
     <string name="font_size">Laki ng Font</string>
+    <string name="Age">Edad</string>
     <string name="small">Maliit</string>
     <string name="medium">Katamtaman</string>
     <string name="large">Malaki</string>
@@ -25,8 +25,6 @@
     <string name="health_vitals">Kalusugan</string>
     <string name="safety_alerts">Alertong Pangkaligtasan</string>
     <string name="no_alerts">Maayos ang lahat</string>
-    <string name="heart_rate">Tibok ng puso: 72 bpm</string>
-    <string name="monitoring_active">AKTIBONG PAGBABANTAY</string>
     <string name="emergency_alert_sent">Naipadala na ang Alert!</string>
     <string name="sos">SOS</string>
     <string name="help">TULONG</string>
@@ -34,7 +32,6 @@
     <string name="done">TAPOS NA</string>
     <string name="elder_id">ELDER ID</string>
     <string name="caregiver_id">CAREGIVER ID</string>
-    <string name="system_online">ONLINE ANG SYSTEM</string>
     <string name="caregiver_label">TAGAPAG-ALAGA</string>
     <string name="call_member">Emergency Call</string>
     <string name="emergency_hotline">911 Dial Support</string>
@@ -43,7 +40,6 @@
     <string name="profiles_and_logs">Profile at Logs</string>
     <string name="connected">Nakakonekta</string>
     <string name="see_all">Tingnan Lahat</string>
-    <string name="system_secured">STATUS: LIGTAS</string>
     <string name="log_analysis">PAGSURI NG LOG</string>
     <string name="timestamp">ORAS</string>
     <string name="status">STATUS</string>

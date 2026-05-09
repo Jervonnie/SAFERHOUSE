@@ -23,7 +23,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             "Juan Dela Cruz",
             "Brgy. New Era, Quezon City",
             "09123456789",
-            mutableListOf(ElderlyMember("1", "Lolo Mao", "QC Area", "0912-345-6789", 82, "Safe", "Just now"))
+            mutableListOf(ElderlyMember("1", "Lolo Mao", "82", "QC Area", "0912-345-6789", 100, "Safe", "Just now"))
         )
     )
 

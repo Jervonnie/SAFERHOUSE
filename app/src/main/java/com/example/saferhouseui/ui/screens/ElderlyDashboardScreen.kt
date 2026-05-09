@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.example.saferhouseui.R
 import com.example.saferhouseui.ui.theme.DarkBackground
 import com.example.saferhouseui.ui.theme.PrimaryTeal
@@ -49,7 +50,11 @@ fun ElderlyDashboardScreen(
     currentLanguage: String,
     currentFontSize: String,
     isEmergencyActive: Boolean,
+    isConfirmationDialogOpen: Boolean,
+    countdownValue: Int,
     onEmergencyToggle: () -> Unit,
+    onConfirmEmergency: () -> Unit,
+    onCancelEmergency: () -> Unit,
     onLanguageChange: (String) -> Unit,
     onFontSizeChange: (String) -> Unit,
     onLogout: () -> Unit
@@ -94,6 +99,15 @@ fun ElderlyDashboardScreen(
                     }
                 ) { padding ->
                     Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+                        if (isConfirmationDialogOpen) {
+                            EmergencyConfirmationDialog(
+                                countdownValue = countdownValue,
+                                fontScale = fontScale,
+                                onConfirm = onConfirmEmergency,
+                                onCancel = onCancelEmergency
+                            )
+                        }
+
                         when (currentScreen) {
                             "dashboard" -> ElderlyDashboardContent(
                                 elderName = elderName,
@@ -145,13 +159,6 @@ fun ElderlyDashboardContent(
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = stringResource(R.string.fall_detection).uppercase(),
-                color = PrimaryTeal.copy(alpha = 0.5f),
-                fontSize = 12.scaledSp(fontScale),
-                fontWeight = FontWeight.Black,
-                letterSpacing = 3.sp
-            )
-            Text(
                 text = stringResource(R.string.welcome, elderName),
                 color = Color.White,
                 fontSize = 28.scaledSp(fontScale),
@@ -202,19 +209,6 @@ fun ElderlyDashboardContent(
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(horizontal = 40.dp)
         )
-        
-        // System Status Indicator
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            PulseIndicator(color = PrimaryTeal)
-            Spacer(modifier = Modifier.width(10.dp))
-            Text(
-                text = stringResource(R.string.monitoring_active),
-                color = PrimaryTeal.copy(alpha = 0.4f),
-                fontSize = 14.scaledSp(fontScale),
-                fontWeight = FontWeight.Black,
-                letterSpacing = 2.sp
-            )
-        }
     }
 }
 
@@ -579,28 +573,6 @@ fun DrawerMenuItem(
 }
 
 @Composable
-fun PulseIndicator(color: Color) {
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-    val alpha by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "alpha"
-    )
-
-    Box(
-        modifier = Modifier
-            .size(14.dp)
-            .clip(CircleShape)
-            .background(color.copy(alpha = alpha))
-            .border(2.dp, color, CircleShape)
-    )
-}
-
-@Composable
 fun ElderlySettingsContent(
     currentLanguage: String,
     onLanguageChange: (String) -> Unit,
@@ -822,6 +794,119 @@ fun ConnectCaregiverDialog(
                 }
 
                 Spacer(modifier = Modifier.height(10.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun EmergencyConfirmationDialog(
+    countdownValue: Int,
+    fontScale: Float,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = { }, // Cannot dismiss by clicking outside
+        properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = RoundedCornerShape(28.dp),
+            color = Color(0xFF0A0A1A), // Dark blue/black as in image
+            border = BorderStroke(2.dp, Color(0xFFFF1744).copy(alpha = 0.5f))
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(32.dp)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.fall_detected),
+                    color = Color(0xFFFF1744),
+                    fontSize = 24.scaledSp(fontScale),
+                    fontWeight = FontWeight.Black,
+                    textAlign = TextAlign.Center
+                )
+
+                Text(
+                    text = stringResource(R.string.are_you_okay),
+                    color = Color.White,
+                    fontSize = 32.scaledSp(fontScale),
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+
+                // Timer Circle
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.size(200.dp)
+                ) {
+                    CircularProgressIndicator(
+                        progress = { countdownValue / 10f },
+                        modifier = Modifier.fillMaxSize(),
+                        color = Color(0xFFFF1744),
+                        strokeWidth = 4.dp,
+                        trackColor = Color.White.copy(alpha = 0.1f),
+                    )
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = stringResource(R.string.sending_alert_in),
+                            color = Color.White,
+                            fontSize = 16.scaledSp(fontScale),
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = countdownValue.toString(),
+                            color = Color(0xFFFF1744),
+                            fontSize = 80.scaledSp(fontScale),
+                            fontWeight = FontWeight.Black
+                        )
+                        Text(
+                            text = stringResource(R.string.seconds),
+                            color = Color.White,
+                            fontSize = 16.scaledSp(fontScale),
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Button(
+                        onClick = onCancel,
+                        modifier = Modifier.weight(1f).height(60.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00C853)),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.im_okay),
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.scaledSp(fontScale),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                    Button(
+                        onClick = onConfirm,
+                        modifier = Modifier.weight(1f).height(60.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF1744)),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.help),
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.scaledSp(fontScale)
+                        )
+                    }
+                }
             }
         }
     }
