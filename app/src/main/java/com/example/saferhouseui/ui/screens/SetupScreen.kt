@@ -5,6 +5,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Badge
+import androidx.compose.material.icons.filled.Cake
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.*
@@ -24,15 +25,20 @@ import com.example.saferhouseui.ui.theme.*
 import androidx.compose.ui.res.stringResource
 import com.example.saferhouseui.R
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+
 @Composable
 fun SetupScreen(
     role: String,
     onNavigateBack: () -> Unit,
-    onComplete: (String, String, String) -> Unit
+    onComplete: (String, String, String, String) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
+    var age by remember { mutableStateOf("") }
     var address by remember { mutableStateOf("") }
     var contact by remember { mutableStateOf("") }
+    val scrollState = rememberScrollState()
 
     val roleTitle = if (role == "elder") stringResource(R.string.elder_setup) else stringResource(R.string.caregiver_setup)
 
@@ -47,11 +53,11 @@ fun SetupScreen(
                 .navigationBarsPadding(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Header Section - Responsive weights
+            // Header Section - Fixed height instead of weight to avoid overlapping
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(0.25f),
+                    .padding(vertical = 40.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -76,16 +82,18 @@ fun SetupScreen(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(0.75f),
+                    .weight(1f),
                 color = Color.White,
                 shape = RoundedCornerShape(topStart = 80.dp)
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 35.dp, vertical = 40.dp),
+                        .padding(horizontal = 35.dp)
+                        .verticalScroll(scrollState),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    Spacer(modifier = Modifier.height(40.dp))
                     Text(
                         text = roleTitle,
                         color = Color.Black,
@@ -102,6 +110,22 @@ fun SetupScreen(
                         placeholder = stringResource(R.string.full_name),
                         icon = Icons.Default.Badge
                     )
+
+                    if (role == "elder") {
+                        Spacer(modifier = Modifier.height(18.dp))
+
+                        SleekInputField(
+                            value = age,
+                            onValueChange = {
+                                if (it.all { char -> char.isDigit() }) {
+                                    age = it
+                                }
+                            },
+                            placeholder = stringResource(R.string.Age),
+                            icon = Icons.Default.Cake,
+                            keyboardType = KeyboardType.Number
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(18.dp))
 
@@ -126,12 +150,13 @@ fun SetupScreen(
                         keyboardType = KeyboardType.Number
                     )
 
-                    Spacer(modifier = Modifier.weight(1f))
+                    Spacer(modifier = Modifier.height(40.dp))
 
                     Button(
                         onClick = { 
-                            if (name.isNotBlank() && address.isNotBlank() && contact.isNotBlank()) {
-                                onComplete(name, address, contact)
+                            val isAgeValid = if (role == "elder") age.isNotBlank() else true
+                            if (name.isNotBlank() && isAgeValid && address.isNotBlank() && contact.isNotBlank()) {
+                                onComplete(name, age, address, contact)
                             }
                         },
                         modifier = Modifier
@@ -143,7 +168,7 @@ fun SetupScreen(
                         ),
                         shape = RoundedCornerShape(16.dp),
                         elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp),
-                        enabled = name.isNotBlank() && address.isNotBlank() && contact.isNotBlank()
+                        enabled = name.isNotBlank() && (if (role == "elder") age.isNotBlank() else true) && address.isNotBlank() && contact.isNotBlank()
                     ) {
                         Text(
                             text = stringResource(R.string.finish_setup),
@@ -163,6 +188,8 @@ fun SetupScreen(
                             fontSize = 14.sp
                         )
                     }
+                    
+                    Spacer(modifier = Modifier.height(20.dp))
                 }
             }
         }
