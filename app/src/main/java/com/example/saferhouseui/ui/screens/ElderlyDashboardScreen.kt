@@ -47,6 +47,8 @@ fun ElderlyDashboardScreen(
     elderAddress: String,
     elderContact: String,
     caregiverName: String,
+    caregiverAddress: String,
+    caregiverContact: String,
     currentLanguage: String,
     currentFontSize: String,
     isEmergencyActive: Boolean,
@@ -120,6 +122,8 @@ fun ElderlyDashboardScreen(
                                 address = elderAddress,
                                 contact = elderContact,
                                 caregiver = caregiverName,
+                                caregiverAddress = caregiverAddress,
+                                caregiverContact = caregiverContact,
                                 fontScale = fontScale,
                                 onBack = { currentScreen = "dashboard" }
                             )
@@ -218,6 +222,8 @@ fun ElderlyProfileContent(
     address: String,
     contact: String,
     caregiver: String,
+    caregiverAddress: String,
+    caregiverContact: String,
     fontScale: Float,
     onBack: () -> Unit
 ) {
@@ -270,8 +276,8 @@ fun ElderlyProfileContent(
                 ProfileCard(
                     title = stringResource(R.string.caregiver_info).uppercase(),
                     name = caregiver,
-                    address = "123 Caregiver Lane, QC",
-                    contact = "0987-654-3210",
+                    address = caregiverAddress,
+                    contact = caregiverContact,
                     idLabel = stringResource(R.string.caregiver_id),
                     idValue = "C-000456",
                     fontScale = fontScale

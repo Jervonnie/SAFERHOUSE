@@ -91,7 +91,9 @@ class MainActivity : AppCompatActivity() {
         val permissions = arrayOf(
             Manifest.permission.SEND_SMS,
             Manifest.permission.CALL_PHONE,
-            Manifest.permission.RECORD_AUDIO
+            Manifest.permission.RECORD_AUDIO,
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
         )
         
         val missingPermissions = permissions.filter {
@@ -249,11 +251,14 @@ fun AppNavigation(
         }
         composable("elderly_dashboard") {
             currentUser?.let { user ->
+                val caregiver = authViewModel.users.find { it.role == "caregiver" }
                 ElderlyDashboardScreen(
                     elderName = user.name,
                     elderAddress = user.address,
                     elderContact = user.contact,
-                    caregiverName = "Juan Dela Cruz", // Mock for now
+                    caregiverName = caregiver?.name ?: "Juan Dela Cruz",
+                    caregiverAddress = caregiver?.address ?: "Brgy. New Era, Quezon City",
+                    caregiverContact = caregiver?.contact ?: "09123456789",
                     currentLanguage = prefViewModel.language,
                     currentFontSize = prefViewModel.fontSize,
                     isEmergencyActive = elderlyViewModel.isEmergencyActive,

@@ -39,7 +39,7 @@ class ElderlyViewModel(
     private var audioDetectionJob: Job? = null
 
     init {
-        startAudioDistressDetection()
+        // startAudioDistressDetection() // DISABLED: Prevent automated SMS/Calls during dev
     }
 
     /**
@@ -96,29 +96,38 @@ class ElderlyViewModel(
     }
 
     private fun sendEmergencyEscalation() {
-        val contact = authViewModel.currentUser?.contact ?: "09XXXXXXXXX"
-        val name = authViewModel.currentUser?.name ?: "User"
+        // In a mock setup where the Elder isn't linked yet, we find the mock caregiver
+        val caregiver = authViewModel.users.find { it.role == "caregiver" }
+        val destinationContact = caregiver?.contact ?: "09123456789" // Default mock caregiver contact
 
-        Log.d("ElderlyViewModel", "Escalation Response: Sending Automated SMS and Phone Call to $contact")
+        val elderName = authViewModel.currentUser?.name ?: "User"
+        val elderContact = authViewModel.currentUser?.contact ?: "Unknown"
+        val location = authViewModel.currentUser?.address ?: "Unknown Location"
 
-        // Automated SMS
+        Log.d("ElderlyViewModel", "Escalation Response: Sending Automated SMS and Phone Call to $destinationContact (Caregiver)")
+
+        // Automated SMS with Location
         try {
             val smsManager = getApplication<Application>().getSystemService(SmsManager::class.java)
-            smsManager.sendTextMessage(contact, null, "EMERGENCY ALERT: $name needs help!", null, null)
+            // Use the phone number registered in the setup for identifying the elder in the message body,
+            // as the SIM number used for sending might be different from the one used during registration.
+            val message = "EMERGENCY ALERT: $elderName (Reg. No: $elderContact) needs help!\nLocation: $location\nView on Maps: https://www.google.com/maps/search/?api=1&query=${location.replace(" ", "+")}"
+            
+            // The destination for the SMS is the Caregiver's contact number, not the Elder's own number.
+            smsManager.sendTextMessage(destinationContact, null, message, null, null)
         } catch (e: Exception) {
             Log.e("ElderlyViewModel", "Failed to send SMS: ${e.message}")
         }
 
-        // Automated Call - In a real app this would call the caregiver, 
-        // but per instructions we keep it to automated call to contact
+        // Redirect to Dialer (ACTION_DIAL) for user control - Calling the Caregiver
         try {
-            val intent = Intent(Intent.ACTION_CALL).apply {
-                data = "tel:$contact".toUri()
+            val intent = Intent(Intent.ACTION_DIAL).apply {
+                data = "tel:$destinationContact".toUri()
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             getApplication<Application>().startActivity(intent)
         } catch (e: Exception) {
-            Log.e("ElderlyViewModel", "Failed to start Call: ${e.message}")
+            Log.e("ElderlyViewModel", "Failed to open Dialer: ${e.message}")
         }
     }
 
