@@ -38,11 +38,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.net.toUri
 import coil.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
-import com.example.saferhouseui.ElderlyMember
 import com.example.saferhouseui.R
 import com.example.saferhouseui.ui.theme.DarkBackground
 import com.example.saferhouseui.ui.theme.PrimaryTeal
 import com.example.saferhouseui.data.model.ActivityLog
+import com.example.saferhouseui.data.model.User
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -61,7 +61,7 @@ fun CaregiverDashboardScreen(
     caregiverName: String,
     caregiverAddress: String,
     caregiverContact: String,
-    managedElders: List<ElderlyMember>,
+    managedElders: List<User> = emptyList(),
     currentFontSize: String,
     onFontSizeChange: (String) -> Unit,
     onUpdateProfile: (String, String, String) -> Unit,
@@ -73,7 +73,7 @@ fun CaregiverDashboardScreen(
     @Suppress("UNUSED_PARAMETER") onLogout: () -> Unit
 ) {
     var currentScreen by remember { mutableStateOf("dashboard") }
-    var selectedElderForLogs by remember { mutableStateOf<ElderlyMember?>(null) }
+    var selectedElderForLogs by remember { mutableStateOf<User?>(null) }
     var selectedLog by remember { mutableStateOf<LogData?>(null) }
     var logBackDestination by remember { mutableStateOf("dashboard") }
 
@@ -109,7 +109,7 @@ fun CaregiverDashboardScreen(
                     currentScreen = "logs" 
                 },
                 onNavigateToSettings = { currentScreen = "settings" },
-                onNavigateToCallList = { currentScreen = "call_list" },
+                onCallElder = { number -> triggerCall(number) },
                 onNavigateToManagement = { currentScreen = "elder_management" },
                 onNavigateToEditProfile = { currentScreen = "edit_profile" },
                 onLogClick = { log ->
@@ -141,20 +141,6 @@ fun CaregiverDashboardScreen(
                     selectedLog = log
                     logBackDestination = "logs"
                     currentScreen = "log_detail"
-                }
-            )
-            "call_list" -> CallListContent(
-                managedElders = managedElders,
-                fontScale = fontScale,
-                onBack = { currentScreen = "dashboard" },
-                onCallElder = { number -> 
-                    if (number.isNotEmpty()) {
-                        triggerCall(number)
-                    } else {
-                        // Just open dialer if no number provided (e.g. from general dialer button)
-                        val intent = Intent(Intent.ACTION_DIAL)
-                        context.startActivity(intent)
-                    }
                 }
             )
             "elder_management" -> ElderManagementContent(
@@ -189,19 +175,17 @@ fun CaregiverDashboardScreen(
                 onUpdateCheckIn = { days, time ->
                     selectedElderForLogs?.let { 
                         onUpdateCheckIn(it.id, days, time)
-                        selectedElderForLogs = it.copy(checkInDays = days, checkInTime = time)
                     }
                 },
                 onUpdateEmergencyContacts = { contacts ->
                     selectedElderForLogs?.let {
                         onUpdateEmergencyContacts(it.id, contacts)
-                        selectedElderForLogs = it.copy(emergencyContacts = contacts)
                     }
                 }
             )
             "specific_logs" -> ActivityLogsContent(
-                title = stringResource(R.string.elder_history, selectedElderForLogs?.name ?: ""),
-                specificElderName = selectedElderForLogs?.name,
+                title = stringResource(R.string.elder_history, selectedElderForLogs?.fullName ?: ""),
+                specificElderName = selectedElderForLogs?.fullName,
                 managedElders = managedElders,
                 activityLogs = activityLogs,
                 fontScale = fontScale,
@@ -246,13 +230,13 @@ fun Int.caregiverScaledSp(scale: Float): TextUnit = (this * scale).sp
 fun DashboardContent(
     name: String,
     address: String,
-    managedElders: List<ElderlyMember>,
+    managedElders: List<User>,
     activityLogs: List<ActivityLog>,
     fontScale: Float,
     selectedImageUri: Uri?,
     onNavigateToLogs: () -> Unit,
     onNavigateToSettings: () -> Unit,
-    onNavigateToCallList: () -> Unit,
+    onCallElder: (String) -> Unit,
     onNavigateToManagement: () -> Unit,
     onNavigateToEditProfile: () -> Unit,
     onLogClick: (LogData) -> Unit
@@ -383,7 +367,7 @@ fun DashboardContent(
                     icon = Icons.Default.Call,
                     color = Color(0xFFFF4B4B),
                     fontScale = fontScale,
-                    onClick = onNavigateToCallList
+                    onClick = { managedElders.firstOrNull()?.let { onCallElder(it.phoneNumber) } }
                 )
                 DashboardActionButton(
                     modifier = Modifier.weight(1f),
@@ -415,28 +399,24 @@ fun DashboardContent(
             Spacer(modifier = Modifier.height(15.dp))
 
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                val locale = androidx.compose.ui.platform.LocalConfiguration.current.locales[0]
+                val sdf = remember(locale) { SimpleDateFormat("HH:mm", locale) }
+                
                 val displayLogs = activityLogs.take(3).map { log ->
-                    val elder = managedElders.find { it.email == log.userId } // Need email in ElderlyMember or search by ID
                     // For now mapping type to color
                     val color = when(log.type) {
                         "SOS", "FALL" -> Color.Red
                         "DAILY_CHECK_MISSED" -> Color(0xFFFFB800)
                         else -> Color(0xFF00C49A)
                     }
-                    val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
+                    val elder = managedElders.find { it.id == log.userId }
                     LogData(
                         color = color,
                         title = log.type.replace("_", " "),
                         location = if (log.latitude != null) "${log.latitude}, ${log.longitude}" else "Last Known Loc",
                         time = sdf.format(Date(log.timestamp)),
-                        elderName = managedElders.find { it.id == "1" }?.name ?: "Unknown" // Mocking for demo
-                    )
-                }.ifEmpty {
-                    val elder1 = managedElders.getOrNull(0)
-                    val log1Name = elder1?.name ?: "Lolo Mao"
-                    val log1Age = elder1?.age ?: "82"
-                    listOf(
-                        LogData(Color(0xFF00C49A), "Safe Check", "14.5995, 120.9842", "Now", log1Name, log1Age)
+                        elderName = elder?.fullName ?: "Unknown",
+                        age = elder?.age?.toString() ?: ""
                     )
                 }
                 
@@ -720,7 +700,7 @@ fun IndustrialLogTile(
 }
 
 @Composable
-fun CallListContent(@Suppress("UNUSED_PARAMETER") managedElders: List<ElderlyMember>, fontScale: Float, onBack: () -> Unit, onCallElder: (String) -> Unit) {
+fun CallListContent(@Suppress("UNUSED_PARAMETER") managedElders: List<User>, fontScale: Float, onBack: () -> Unit, onCallElder: (String) -> Unit) {
     Column(modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 25.dp)) {
         Row(modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack, modifier = Modifier.background(Color.White.copy(alpha = 0.05f), CircleShape)) {
@@ -747,9 +727,6 @@ fun CallListContent(@Suppress("UNUSED_PARAMETER") managedElders: List<ElderlyMem
                 }
                 IconButton(
                     onClick = { 
-                        val intent = Intent(Intent.ACTION_DIAL).apply {
-                            data = "tel:911".toUri()
-                        }
                         onCallElder("911") // Reusing the callback to trigger the dialer
                     },
                     modifier = Modifier.background(Color(0xFFFF4B4B), CircleShape)
@@ -772,8 +749,8 @@ fun CallListContent(@Suppress("UNUSED_PARAMETER") managedElders: List<ElderlyMem
                         }
                         Spacer(modifier = Modifier.width(15.dp))
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(text = elder.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.caregiverScaledSp(fontScale))
-                            Text(text = elder.status, color = if(elder.status == "Safe") PrimaryTeal else Color.Red, fontSize = 12.caregiverScaledSp(fontScale))
+                            Text(text = elder.fullName, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.caregiverScaledSp(fontScale))
+                            Text(text = if (elder.isEmergency) "Emergency" else "Safe", color = if(!elder.isEmergency) PrimaryTeal else Color.Red, fontSize = 12.caregiverScaledSp(fontScale))
                         }
                         IconButton(
                             onClick = { onCallElder(elder.phoneNumber) },
@@ -790,23 +767,23 @@ fun CallListContent(@Suppress("UNUSED_PARAMETER") managedElders: List<ElderlyMem
 
 @Composable
 fun ElderManagementContent(
-    managedElders: List<ElderlyMember>,
+    managedElders: List<User>,
     fontScale: Float,
     onBack: () -> Unit,
     onAddElder: () -> Unit,
     onRemoveElder: (String) -> Unit,
-    onSeeLogs: (ElderlyMember) -> Unit,
-    onSeeProfile: (ElderlyMember) -> Unit
+    onSeeLogs: (User) -> Unit,
+    onSeeProfile: (User) -> Unit
 ) {
     var isEditMode by remember { mutableStateOf(false) }
-    val elderToRemoveState = remember { mutableStateOf<ElderlyMember?>(null) }
+    val elderToRemoveState = remember { mutableStateOf<User?>(null) }
     val elderToRemove = elderToRemoveState.value
 
     if (elderToRemove != null) {
         AlertDialog(
             onDismissRequest = { elderToRemoveState.value = null },
             title = { Text(stringResource(R.string.remove_member_title)) },
-            text = { Text(stringResource(R.string.remove_member_msg, elderToRemove.name)) },
+            text = { Text(stringResource(R.string.remove_member_msg, elderToRemove.fullName)) },
             confirmButton = {
                 TextButton(onClick = {
                     onRemoveElder(elderToRemove.id)
@@ -992,7 +969,7 @@ fun SleekInputField(
 
 @Composable
 fun ArtisticElderCard(
-    elder: ElderlyMember,
+    elder: User,
     fontScale: Float,
     isEditMode: Boolean = false,
     onRemove: () -> Unit = {},
@@ -1011,15 +988,15 @@ fun ArtisticElderCard(
                     modifier = Modifier.size(60.dp).clip(RoundedCornerShape(15.dp)).background(PrimaryTeal.copy(alpha = 0.1f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(text = elder.name.take(1), color = PrimaryTeal, fontSize = 24.caregiverScaledSp(fontScale), fontWeight = FontWeight.Black)
+                    Text(text = elder.fullName.take(1), color = PrimaryTeal, fontSize = 24.caregiverScaledSp(fontScale), fontWeight = FontWeight.Black)
                 }
                 Spacer(modifier = Modifier.width(15.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(text = elder.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.caregiverScaledSp(fontScale))
+                    Text(text = elder.fullName, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.caregiverScaledSp(fontScale))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(if(elder.status == "Safe") PrimaryTeal else Color.Red))
+                        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(if(!elder.isEmergency) PrimaryTeal else Color.Red))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text(text = elder.status, color = Color.White.copy(alpha = 0.6f), fontSize = 12.caregiverScaledSp(fontScale))
+                        Text(text = if(!elder.isEmergency) "Safe" else "Emergency", color = Color.White.copy(alpha = 0.6f), fontSize = 12.caregiverScaledSp(fontScale))
                     }
                 }
                 
@@ -1060,7 +1037,7 @@ fun ArtisticElderCard(
 
 @Composable
 fun ElderProfileContent(
-    elder: ElderlyMember?,
+    elder: User?,
     fontScale: Float,
     onBack: () -> Unit,
     onCallElder: (String) -> Unit,
@@ -1099,7 +1076,7 @@ fun ElderProfileContent(
                     Icon(Icons.Default.Person, contentDescription = null, tint = PrimaryTeal, modifier = Modifier.size(50.dp))
                 }
                 Spacer(modifier = Modifier.height(20.dp))
-                Text(text = elder.name, color = Color.White, fontSize = 24.caregiverScaledSp(fontScale), fontWeight = FontWeight.Black)
+                Text(text = elder.fullName, color = Color.White, fontSize = 24.caregiverScaledSp(fontScale), fontWeight = FontWeight.Black)
                 Text(text = "ID: ${elder.id}", color = PrimaryTeal, fontSize = 12.caregiverScaledSp(fontScale), fontWeight = FontWeight.Bold)
                 
                 Spacer(modifier = Modifier.height(30.dp))
@@ -1130,7 +1107,7 @@ fun ElderProfileContent(
 
                 Spacer(modifier = Modifier.height(30.dp))
                 
-                CaregiverDetailSection(label = stringResource(R.string.Age), value = elder.age, icon = Icons.Default.Cake, fontScale = fontScale)
+                CaregiverDetailSection(label = stringResource(R.string.Age), value = elder.age.toString(), icon = Icons.Default.Cake, fontScale = fontScale)
                 Spacer(modifier = Modifier.height(20.dp))
                 CaregiverDetailSection(label = stringResource(R.string.address), value = elder.address, icon = Icons.Default.LocationOn, fontScale = fontScale)
                 Spacer(modifier = Modifier.height(20.dp))
@@ -1155,8 +1132,8 @@ fun ElderProfileContent(
 
     if (showCheckInSettings) {
         CheckInSettingsDialog(
-            currentDays = elder.checkInDays,
-            currentTime = elder.checkInTime,
+            currentDays = emptyList(), // Needs migration to UserSettings
+            currentTime = "", // Needs migration to UserSettings
             fontScale = fontScale,
             onDismiss = { showCheckInSettings = false },
             onSave = { days, time ->
@@ -1168,7 +1145,7 @@ fun ElderProfileContent(
 
     if (showEmergencySettings) {
         EmergencyContactsDialog(
-            currentContacts = elder.emergencyContacts,
+            currentContacts = emptyList(), // Needs migration to EmergencyContact
             fontScale = fontScale,
             onDismiss = { showEmergencySettings = false },
             onSave = { contacts ->
@@ -1364,46 +1341,41 @@ fun MiniActivityItem(log: LogData, fontScale: Float, onClick: () -> Unit) {
 fun ActivityLogsContent(
     title: String,
     specificElderName: String? = null,
-    managedElders: List<ElderlyMember> = emptyList(),
+    managedElders: List<User> = emptyList(),
     activityLogs: List<ActivityLog> = emptyList(),
     fontScale: Float,
     onBack: () -> Unit,
     onLogClick: (LogData) -> Unit
 ) {
-    val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
+    val locale = androidx.compose.ui.platform.LocalConfiguration.current.locales[0]
+    val sdf = remember(locale) { SimpleDateFormat("HH:mm", locale) }
+
     val logs = if (activityLogs.isNotEmpty()) {
-        activityLogs.map { log ->
+        val filteredLogs = if (specificElderName != null) {
+            val elderId = managedElders.find { it.fullName == specificElderName }?.id
+            activityLogs.filter { it.userId == elderId }
+        } else {
+            activityLogs
+        }
+
+        filteredLogs.map { log ->
             val color = when(log.type) {
                 "SOS", "FALL" -> Color.Red
                 "DAILY_CHECK_MISSED" -> Color(0xFFFFB800)
                 else -> Color(0xFF00C49A)
             }
+            val elder = managedElders.find { it.id == log.userId }
             LogData(
                 color = color,
                 title = log.type.replace("_", " "),
                 location = if (log.latitude != null) "${log.latitude}, ${log.longitude}" else "Last Known Loc",
                 time = sdf.format(Date(log.timestamp)),
-                elderName = managedElders.find { it.id == "1" }?.name ?: "Unknown"
+                elderName = elder?.fullName ?: "Unknown",
+                age = elder?.age?.toString() ?: ""
             )
         }
-    } else if (specificElderName != null) {
-        val elder = managedElders.find { it.name == specificElderName }
-        val age = elder?.age ?: "82"
-        listOf(
-            LogData(PrimaryTeal, "Fall Detected", "14.5995, 120.9842", "14:02", specificElderName, age),
-            LogData(Color(0xFFFFB800), "Activity Detected", "14.6012, 120.9855", "12:45", specificElderName, age)
-        )
     } else {
-        val elder1 = managedElders.getOrNull(0)
-        val elder2 = managedElders.getOrNull(1)
-        val name1 = elder1?.name ?: "Lolo Mao"
-        val age1 = elder1?.age ?: "82"
-        val name2 = elder2?.name ?: "Lola Maria"
-        val age2 = elder2?.age ?: "75"
-        listOf(
-            LogData(PrimaryTeal, "Fall Detected", "14.5995, 120.9842", "14:02", name1, age1),
-            LogData(Color(0xFFFFB800), "Activity Detected", "14.6012, 120.9855", "12:45", name2, age2)
-        )
+        emptyList()
     }
 
     Column(modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 25.dp)) {
@@ -1448,7 +1420,7 @@ fun ModernLogTile(log: LogData, fontScale: Float, onClick: () -> Unit) {
 @Composable
 fun SettingsContent(
     name: String,
-    @Suppress("UNUSED_PARAMETER") managedElders: List<ElderlyMember>,
+    @Suppress("UNUSED_PARAMETER") managedElders: List<User>,
     fontScale: Float,
     onBack: () -> Unit,
     onLogout: () -> Unit,

@@ -35,6 +35,11 @@ android {
     buildFeatures {
         compose = true
     }
+    packaging {
+        jniLibs {
+            useLegacyPackaging = false
+        }
+    }
 }
 
 dependencies {
@@ -50,11 +55,18 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.coil.compose)
+    implementation(libs.play.services.location)
+    implementation(libs.kotlinx.coroutines.play.services)
     
     // Room
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
+
+    // AI Monitoring
+    implementation(libs.tensorflow.lite.audio)
+    // implementation(libs.tensorflow.support)
+    implementation(libs.vosk.android)
 
     // Supabase
     implementation(libs.supabase.postgrest)

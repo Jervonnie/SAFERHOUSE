@@ -1,29 +1,37 @@
 package com.example.saferhouseui.viewmodel
 
 import androidx.lifecycle.ViewModel
-import com.example.saferhouseui.ElderlyMember
+import androidx.lifecycle.viewModelScope
+import com.example.saferhouseui.data.model.User
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
 
 class CaregiverViewModel(private val authViewModel: AuthViewModel) : ViewModel() {
 
+    private var currentUser: User? = null
+
+    init {
+        viewModelScope.launch {
+            authViewModel.currentUser.collectLatest {
+                currentUser = it
+            }
+        }
+    }
+
     fun updateRole(role: String) {
-        authViewModel.currentUser?.let { user ->
+        currentUser?.let { user ->
             authViewModel.updateUser(user.copy(role = role))
         }
     }
 
     fun updateProfile(name: String, address: String, contact: String) {
-        authViewModel.currentUser?.let { user ->
+        currentUser?.let { user ->
             val updatedUser = user.copy(
-                name = name,
+                fullName = name,
                 address = address,
-                contact = contact
+                phoneNumber = contact
             )
-            
-            // Autopopulate first elderly member for demo purposes if caregiver
-            if (updatedUser.role == "caregiver" && updatedUser.managedElders.isEmpty()) {
-                updatedUser.managedElders.add(ElderlyMember("1", "Lolo Mao", "82", "QC Area", "0912-345-6789", 100, "Safe", "Just now"))
-            }
             
             authViewModel.updateUser(updatedUser)
         }
@@ -36,31 +44,14 @@ class CaregiverViewModel(private val authViewModel: AuthViewModel) : ViewModel()
     }
 
     fun removeElderlyMember(elderId: String) {
-        authViewModel.currentUser?.let { user ->
-            val newList = user.managedElders.filter { it.id != elderId }.toMutableList()
-            authViewModel.updateUser(user.copy(managedElders = newList))
-        }
+        // Logic to be moved to Repository/Database
     }
 
     fun updateCheckInSchedule(elderId: String, days: List<String>, time: String) {
-        authViewModel.currentUser?.let { user ->
-            val updatedElders = user.managedElders.map {
-                if (it.id == elderId) {
-                    it.copy(checkInDays = days, checkInTime = time)
-                } else it
-            }.toMutableList()
-            authViewModel.updateUser(user.copy(managedElders = updatedElders))
-        }
+        // Logic to be moved to Repository/Database
     }
 
     fun updateEmergencyContacts(elderId: String, contacts: List<String>) {
-        authViewModel.currentUser?.let { user ->
-            val updatedElders = user.managedElders.map {
-                if (it.id == elderId) {
-                    it.copy(emergencyContacts = contacts)
-                } else it
-            }.toMutableList()
-            authViewModel.updateUser(user.copy(managedElders = updatedElders))
-        }
+        // Logic to be moved to Repository/Database
     }
 }
