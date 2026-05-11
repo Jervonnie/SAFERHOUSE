@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.AudioAttributes
 import android.media.RingtoneManager
+import android.os.Build
 import android.telephony.SmsManager
 import android.util.Log
 import androidx.core.content.ContextCompat
@@ -14,6 +15,7 @@ import com.example.saferhouseui.data.model.EmergencyContact
 import com.example.saferhouseui.data.model.User
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
 import kotlinx.coroutines.tasks.await
 
 class EmergencyManager(private val context: Context) {
@@ -26,12 +28,26 @@ class EmergencyManager(private val context: Context) {
         
         // 1. Get Coordinates
         val locationLink = try {
-            if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-                val location = fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null).await()
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                
+                val cts = CancellationTokenSource()
+                val location = try {
+                    fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cts.token).await()
+                        ?: fusedLocationClient.lastLocation.await()
+                } catch (e: Exception) {
+                    Log.e("EmergencyManager", "Location task failed: ${e.message}")
+                    null
+                }
+
                 if (location != null) {
                     "https://www.google.com/maps/search/?api=1&query=${location.latitude},${location.longitude}"
-                } else "Location unavailable"
-            } else "Permission denied"
+                } else {
+                    "Location unavailable"
+                }
+            } else {
+                "Permission denied"
+            }
         } catch (e: Exception) {
             Log.e("EmergencyManager", "Error getting location: ${e.message}")
             "Error retrieving location"
@@ -44,31 +60,62 @@ class EmergencyManager(private val context: Context) {
 
         // 3. SMS Escalation
         val sortedContacts = contacts.sortedBy { it.priority }
-        val smsManager = context.getSystemService(SmsManager::class.java)
-
-        // First pass: Family/Caregivers
         val primaryContacts = sortedContacts.filter { !it.isBarangay }
-        primaryContacts.forEach { contact ->
-            sendSms(smsManager, contact.phoneNumber, message)
+        
+        val smsManager: SmsManager? = try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                context.getSystemService(SmsManager::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                SmsManager.getDefault()
+            }
+        } catch (e: Exception) {
+            Log.e("EmergencyManager", "Failed to get SmsManager: ${e.message}")
+            null
+        }
+
+        if (smsManager != null) {
+            // First pass: Family/Caregivers
+            primaryContacts.forEach { contact ->
+                sendSms(smsManager, contact.phoneNumber, message)
+            }
+            
+            // Also send to the direct caregiver number if it's set in user profile
+            user?.caregiverPhoneNumber?.let { cgPhone ->
+                if (cgPhone.isNotBlank() && primaryContacts.none { it.phoneNumber == cgPhone }) {
+                    sendSms(smsManager, cgPhone, message)
+                }
+            }
+
+            // 5. Barangay Escalation
+            val barangayContacts = sortedContacts.filter { it.isBarangay }
+            barangayContacts.forEach { contact ->
+                sendSms(smsManager, contact.phoneNumber, "[ESCALATED] $message")
+            }
+        } else {
+            Log.e("EmergencyManager", "SmsManager is null, cannot send SMS")
         }
 
         // 4. Voice Call to primary
         if (primaryContacts.isNotEmpty()) {
             initiateCall(primaryContacts[0].phoneNumber)
-        }
-
-        // 5. Barangay Escalation
-        val barangayContacts = sortedContacts.filter { it.isBarangay }
-        barangayContacts.forEach { contact ->
-            sendSms(smsManager, contact.phoneNumber, "[ESCALATED] $message")
+        } else if (!user?.caregiverPhoneNumber.isNullOrEmpty()) {
+            initiateCall(user?.caregiverPhoneNumber!!)
         }
     }
 
     private fun sendSms(smsManager: SmsManager, phoneNumber: String, message: String) {
         try {
             if (ContextCompat.checkSelfPermission(context, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED) {
-                smsManager.sendTextMessage(phoneNumber, null, message, null, null)
+                val parts = smsManager.divideMessage(message)
+                if (parts.size > 1) {
+                    smsManager.sendMultipartTextMessage(phoneNumber, null, parts, null, null)
+                } else {
+                    smsManager.sendTextMessage(phoneNumber, null, message, null, null)
+                }
                 Log.d("EmergencyManager", "SMS sent to $phoneNumber")
+            } else {
+                Log.e("EmergencyManager", "SEND_SMS permission missing")
             }
         } catch (e: Exception) {
             Log.e("EmergencyManager", "Failed to send SMS to $phoneNumber: ${e.message}")

@@ -135,13 +135,13 @@ class ElderlyViewModel(
     }
 
     fun triggerEmergency() {
-        if (!isEmergencyActive && !isConfirmationDialogOpen) {
-            isConfirmationDialogOpen = true
-            startCountdown()
-        }
+        // Restore confirmation dialog to prevent false alarms from casual talk/stories
+        isConfirmationDialogOpen = true
+        startCountdown()
     }
 
     private fun startCountdown() {
+        isConfirmationDialogOpen = true
         countdownValue = 10
         countdownJob?.cancel()
         countdownJob = viewModelScope.launch {
@@ -223,15 +223,19 @@ class ElderlyViewModel(
         }
     }
 
-    fun updateProfile(name: String, address: String, contact: String) {
-        currentUser?.let { user ->
-            authViewModel.updateUser(
-                user.copy(
-                    fullName = name,
-                    address = address,
-                    phoneNumber = contact
+    fun updateProfile(name: String, caregiverName: String, address: String, contact: String, caregiverPhone: String) {
+        viewModelScope.launch {
+            currentUser?.let { user ->
+                authViewModel.updateUser(
+                    user.copy(
+                        fullName = name,
+                        address = address,
+                        phoneNumber = contact,
+                        caregiverName = caregiverName,
+                        caregiverPhoneNumber = caregiverPhone
+                    )
                 )
-            )
+            }
         }
     }
 

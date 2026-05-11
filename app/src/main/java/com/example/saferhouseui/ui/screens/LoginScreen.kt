@@ -19,6 +19,7 @@ import com.example.saferhouseui.ui.theme.*
 
 import androidx.compose.ui.res.stringResource
 import com.example.saferhouseui.R
+import kotlinx.coroutines.launch
 
 @Composable
 fun LoginScreen(
@@ -168,28 +169,37 @@ fun LoginScreen(
 
                     Spacer(modifier = Modifier.height(30.dp))
 
+                    val scope = rememberCoroutineScope()
+
                     Button(
                         onClick = { 
-                            if (authViewModel.login(email, password)) {
-                                onNavigateToDashboard(email)
-                            } else {
-                                loginError = true
+                            scope.launch {
+                                if (authViewModel.login(email, password)) {
+                                    onNavigateToDashboard(email)
+                                } else {
+                                    loginError = true
+                                }
                             }
                         },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(60.dp),
+                        enabled = !authViewModel.loginInProgress,
                         colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal),
                         shape = RoundedCornerShape(16.dp),
                         elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
                     ) {
-                        Text(
-                            text = stringResource(R.string.login_btn),
-                            color = Color.White,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp
-                        )
+                        if (authViewModel.loginInProgress) {
+                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                        } else {
+                            Text(
+                                text = stringResource(R.string.login_btn),
+                                color = Color.White,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.sp
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(15.dp))

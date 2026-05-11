@@ -11,6 +11,8 @@ class UserRepository(
 
     suspend fun getCurrentUser(): User? = userDao.getCurrentUser()
 
+    suspend fun getUserByEmail(email: String): User? = userDao.getUserByEmail(email)
+
     suspend fun insertUser(user: User) {
         userDao.insertUser(user)
         // Future: Sync with Supabase

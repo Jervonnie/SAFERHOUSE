@@ -40,6 +40,7 @@ import com.example.saferhouseui.viewmodel.AuthViewModel
 import com.example.saferhouseui.viewmodel.CaregiverViewModel
 import com.example.saferhouseui.viewmodel.ElderlyViewModel
 import com.example.saferhouseui.viewmodel.UserPreferenceViewModel
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
     private val requestPermissionLauncher = registerForActivityResult(
@@ -94,7 +95,13 @@ class MainActivity : AppCompatActivity() {
                 
                 LaunchedEffect(currentUser) {
                     val user = currentUser
-                    if (user != null && (user.role.equals("ELDERLY", ignoreCase = true) || user.role.equals("ELDER", ignoreCase = true))) {
+                    val hasMicPermission = ContextCompat.checkSelfPermission(
+                        this@MainActivity, 
+                        Manifest.permission.RECORD_AUDIO
+                    ) == PackageManager.PERMISSION_GRANTED
+                    
+                    if (user != null && hasMicPermission && 
+                        (user.role.equals("ELDERLY", ignoreCase = true) || user.role.equals("ELDER", ignoreCase = true))) {
                         val intent = Intent(this@MainActivity, SafetyMonitoringService::class.java)
                         ContextCompat.startForegroundService(this@MainActivity, intent)
                     } else {
@@ -168,6 +175,7 @@ fun AppNavigation(
 ) {
     val navController = rememberNavController()
     val currentUser by authViewModel.currentUser.collectAsState()
+    val scope = rememberCoroutineScope()
 
     NavHost(navController = navController, startDestination = "login") {
         composable("login") {
@@ -176,9 +184,8 @@ fun AppNavigation(
                 onNavigateToRegister = { navController.navigate("register") },
                 onNavigateToForgotPassword = { navController.navigate("forgot_password") },
                 onNavigateToDashboard = { selectedEmail ->
-                    // Navigation is now handled by observing currentUser or through explicit success
                     val user = currentUser
-                    if (user != null && user.email == selectedEmail) {
+                    if (user != null && user.email.equals(selectedEmail, ignoreCase = true)) {
                         val route = when (user.role.lowercase()) {
                             "caregiver" -> "caregiver_dashboard"
                             "elderly", "elder" -> "elderly_dashboard"
@@ -195,8 +202,10 @@ fun AppNavigation(
             RegisterScreen(
                 onNavigateToLogin = { navController.navigate("login") },
                 onUserCreated = { email, password ->
-                    authViewModel.register(email, "New User", "ELDERLY") // Added default fullName and role
-                    navController.navigate("role")
+                    scope.launch {
+                        authViewModel.register(email, "New User", "ELDERLY")
+                        navController.navigate("role")
+                    }
                 }
             )
         }
@@ -224,15 +233,17 @@ fun AppNavigation(
             SetupScreen(
                 role = role,
                 onNavigateBack = { navController.popBackStack() },
-                onComplete = { name, _, address, contact ->
-                    if (role == "caregiver") {
-                        caregiverViewModel.updateProfile(name, address, contact)
-                    } else {
-                        elderlyViewModel.updateProfile(name, address, contact)
-                    }
-                    authViewModel.logout()
-                    navController.navigate("login") {
-                        popUpTo(0) { inclusive = true }
+                onComplete = { name, caregiverName, address, contact, caregiverPhone ->
+                    scope.launch {
+                        if (role == "caregiver") {
+                            caregiverViewModel.updateProfile(name, address, contact)
+                        } else {
+                            elderlyViewModel.updateProfile(name, caregiverName, address, contact, caregiverPhone)
+                        }
+                        authViewModel.logout()
+                        navController.navigate("login") {
+                            popUpTo(0) { inclusive = true }
+                        }
                     }
                 }
             )
@@ -277,9 +288,9 @@ fun AppNavigation(
                     elderName = user.fullName,
                     elderAddress = user.address,
                     elderContact = user.phoneNumber,
-                    caregiverName = "Juan Dela Cruz", // To be fetched via Relationship
-                    caregiverAddress = "Brgy. New Era, Quezon City",
-                    caregiverContact = "09123456789",
+                    caregiverName = user.caregiverName ?: "Not Assigned",
+                    caregiverAddress = "Location pending",
+                    caregiverContact = user.caregiverPhoneNumber ?: "N/A",
                     currentLanguage = prefViewModel.language,
                     currentFontSize = prefViewModel.fontSize,
                     isEmergencyActive = elderlyViewModel.isEmergencyActive,

@@ -35,9 +35,14 @@ android {
     buildFeatures {
         compose = true
     }
+
+    androidResources {
+        noCompress += "tflite"
+    }
+
     packaging {
         jniLibs {
-            useLegacyPackaging = false
+            useLegacyPackaging = true
         }
     }
 }
@@ -65,7 +70,6 @@ dependencies {
 
     // AI Monitoring
     implementation(libs.tensorflow.lite.audio)
-    // implementation(libs.tensorflow.support)
     implementation(libs.vosk.android)
 
     // Supabase

@@ -28,25 +28,34 @@ class AuthViewModel(
     var isReturningUser by mutableStateOf(prefs.getBoolean("is_returning_user", false))
         private set
 
+    var loginInProgress by mutableStateOf(false)
+        private set
+
     init {
         viewModelScope.launch {
+            // Check if there's a "remembered" user session in the DB
             _currentUser.value = userRepository.getCurrentUser()
         }
     }
 
-    fun login(email: String, password: String): Boolean {
-        // Mock login - in reality, this would call Supabase
-        viewModelScope.launch {
-            val user = userRepository.getCurrentUser() // Mock finding user
-            if (user != null && user.email == email) {
+    suspend fun login(email: String, password: String): Boolean {
+        loginInProgress = true
+        return try {
+            val user = userRepository.getUserByEmail(email)
+            if (user != null) {
+                // In a real app, we'd verify the password here
                 _currentUser.value = user
                 markAsReturning()
+                true
+            } else {
+                false
             }
+        } finally {
+            loginInProgress = false
         }
-        return true // Always return true for mock
     }
 
-    fun register(email: String, fullName: String, role: String) {
+    suspend fun register(email: String, fullName: String, role: String) {
         val newUser = User(
             id = UUID.randomUUID().toString(),
             email = email,
@@ -56,11 +65,9 @@ class AuthViewModel(
             address = "",
             role = role
         )
-        viewModelScope.launch {
-            userRepository.insertUser(newUser)
-            _currentUser.value = newUser
-            markAsReturning()
-        }
+        userRepository.insertUser(newUser)
+        _currentUser.value = newUser
+        markAsReturning()
     }
 
     private fun markAsReturning() {
@@ -70,13 +77,10 @@ class AuthViewModel(
 
     fun logout() {
         _currentUser.value = null
-        // Potentially clear DB or just local state
     }
 
-    fun updateUser(updatedUser: User) {
-        viewModelScope.launch {
-            userRepository.updateUser(updatedUser)
-            _currentUser.value = updatedUser
-        }
+    suspend fun updateUser(updatedUser: User) {
+        userRepository.updateUser(updatedUser)
+        _currentUser.value = updatedUser
     }
 }

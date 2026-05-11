@@ -10,6 +10,8 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.os.Build
+import android.content.pm.ServiceInfo
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -60,13 +62,36 @@ class SafetyMonitoringService : Service(), SensorEventListener {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val notification = createNotification()
-        startForeground(NOTIFICATION_ID, notification)
+        
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error starting foreground service: ${e.message}")
+            // Fallback
+            try {
+                startForeground(NOTIFICATION_ID, notification)
+            } catch (e2: Exception) {
+                Log.e(TAG, "Critical error starting foreground: ${e2.message}")
+            }
+        }
         
         val app = application as SaferHouseApplication
         
-        // Initialize Audio Analyzer
-        audioAnalyzer = AudioAnalyzer(this) { distressType ->
-            triggerEmergency("AUDIO_DISTRESS", "Distress detected: $distressType")
+        // Initialize Audio Analyzer if not already done
+        if (audioAnalyzer == null) {
+            try {
+                audioAnalyzer = AudioAnalyzer(this) { distressType ->
+                    triggerEmergency("AUDIO_DISTRESS", "Distress detected: $distressType")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to initialize AudioAnalyzer: ${e.message}")
+            }
         }
         
         // Log service start
