@@ -1,76 +1,147 @@
 package com.example.saferhouseui.viewmodel
 
 import android.app.Application
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
-import android.telephony.SmsManager
+import android.content.IntentFilter
+import android.media.MediaPlayer
+import android.media.RingtoneManager
+import android.net.Uri
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.saferhouseui.data.EmergencyManager
+import com.example.saferhouseui.data.model.ActivityLog
+import com.example.saferhouseui.data.model.EmergencyContact
+import com.example.saferhouseui.data.model.User
+import com.example.saferhouseui.data.repository.ActivityRepository
+import com.example.saferhouseui.data.repository.EmergencyContactRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import androidx.core.net.toUri
 
 class ElderlyViewModel(
     application: Application,
-    private val authViewModel: AuthViewModel
+    private val authViewModel: AuthViewModel,
+    private val activityRepository: ActivityRepository,
+    private val emergencyContactRepository: EmergencyContactRepository
 ) : AndroidViewModel(application) {
     
-    // The final emergency state (Alert sent)
+    private val emergencyManager = EmergencyManager(application)
+    private var currentUser: User? = null
+
+    private val _emergencyContacts = MutableStateFlow<List<EmergencyContact>>(emptyList())
+    val emergencyContacts: StateFlow<List<EmergencyContact>> = _emergencyContacts.asStateFlow()
+
     var isEmergencyActive by mutableStateOf(false)
         private set
 
-    // The state for the 10-second confirmation dialog
     var isConfirmationDialogOpen by mutableStateOf(false)
         private set
 
     var countdownValue by mutableIntStateOf(10)
         private set
 
-    // Indicates if the audio distress feature is running in background
     var isAudioDetectionEnabled by mutableStateOf(true)
         private set
 
+    var isCheckInPending by mutableStateOf(false)
+        private set
+    
+    private var checkInTimeoutJob: Job? = null
+    
+    var isLocalAlarmActive by mutableStateOf(false)
+        private set
+    
+    private var mediaPlayer: MediaPlayer? = null
     private var countdownJob: Job? = null
     private var audioDetectionJob: Job? = null
 
+    var generatedPairingCode by mutableStateOf<String?>(null)
+        private set
+
+    private val emergencyReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == "com.example.saferhouseui.EMERGENCY_TRIGGER") {
+                val type = intent.getStringExtra("type") ?: "UNKNOWN"
+                Log.d("ElderlyViewModel", "Received emergency broadcast: $type")
+                triggerEmergency()
+            }
+        }
+    }
+
     init {
-        startAudioDistressDetection()
-    }
+        val filter = IntentFilter("com.example.saferhouseui.EMERGENCY_TRIGGER")
+        ContextCompat.registerReceiver(
+            application,
+            emergencyReceiver,
+            filter,
+            ContextCompat.RECEIVER_EXPORTED
+        )
 
-    /**
-     * Simulates the constant background listening for distress keywords.
-     * Both manual button and this detection will lead to the same confirmation process.
-     */
-    fun startAudioDistressDetection() {
-        isAudioDetectionEnabled = true
-        audioDetectionJob?.cancel()
-        audioDetectionJob = viewModelScope.launch {
-            Log.d("ElderlyViewModel", "Audio Distress Detection started. Listening for keywords...")
-            // Simulated: If a keyword is detected (e.g., after some time), it triggers the same confirmation dialog
-            // We don't trigger it immediately to avoid "already ON" state on dashboard entry
-            delay(60000) // Simulate detection after 1 minute for demo purposes
-            Log.d("ElderlyViewModel", "Keyword Detected via Audio!")
-            triggerEmergency()
+        viewModelScope.launch {
+            authViewModel.currentUser.collectLatest { user ->
+                currentUser = user
+                if (user != null) {
+                    launch {
+                        emergencyContactRepository.getAllContacts().collect { contacts ->
+                            _emergencyContacts.value = contacts.filter { it.elderlyId == user.id }
+                        }
+                    }
+                }
+            }
         }
     }
 
-    /**
-     * Entry point for both Manual SOS and Audio Detection.
-     * Triggers the 10-second confirmation dialog.
-     */
+    fun generatePairingCode() {
+        val code = (100000..999999).random().toString()
+        generatedPairingCode = code
+        addLog("PAIRING", "Generated new pairing code: $code")
+    }
+
+    fun triggerDailyCheckIn() {
+        isCheckInPending = true
+        updateStatus("Check-In Pending")
+        checkInTimeoutJob?.cancel()
+        checkInTimeoutJob = viewModelScope.launch {
+            delay(300000) 
+            if (isCheckInPending) {
+                notifyCheckInMissed()
+            }
+        }
+    }
+
+    fun respondToCheckIn() {
+        isCheckInPending = false
+        checkInTimeoutJob?.cancel()
+        updateStatus("Safe")
+        addLog("DAILY_CHECK", "Elder responded to daily check-in and is safe.")
+    }
+
+    private fun notifyCheckInMissed() {
+        isCheckInPending = false
+        updateStatus("Missed Check-In")
+        addLog("DAILY_CHECK_MISSED", "Elder missed the scheduled daily check-in.")
+    }
+
     fun triggerEmergency() {
-        if (!isEmergencyActive && !isConfirmationDialogOpen) {
-            isConfirmationDialogOpen = true
-            startCountdown()
-        }
+        // Restore confirmation dialog to prevent false alarms from casual talk/stories
+        isConfirmationDialogOpen = true
+        startCountdown()
     }
 
     private fun startCountdown() {
+        isConfirmationDialogOpen = true
         countdownValue = 10
         countdownJob?.cancel()
         countdownJob = viewModelScope.launch {
@@ -92,54 +163,88 @@ class ElderlyViewModel(
         isConfirmationDialogOpen = false
         countdownJob?.cancel()
         isEmergencyActive = true
+        updateStatus("Emergency")
+        addLog("SOS", "Emergency alert triggered.")
         sendEmergencyEscalation()
     }
 
     private fun sendEmergencyEscalation() {
-        val contact = authViewModel.currentUser?.contact ?: "09XXXXXXXXX"
-        val name = authViewModel.currentUser?.name ?: "User"
-
-        Log.d("ElderlyViewModel", "Escalation Response: Sending Automated SMS and Phone Call to $contact")
-
-        // Automated SMS
-        try {
-            val smsManager = getApplication<Application>().getSystemService(SmsManager::class.java)
-            smsManager.sendTextMessage(contact, null, "EMERGENCY ALERT: $name needs help!", null, null)
-        } catch (e: Exception) {
-            Log.e("ElderlyViewModel", "Failed to send SMS: ${e.message}")
+        viewModelScope.launch {
+            emergencyManager.executeEscalation(currentUser, _emergencyContacts.value)
         }
-
-        // Automated Call
-        try {
-            val intent = Intent(Intent.ACTION_CALL).apply {
-                data = "tel:$contact".toUri()
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            getApplication<Application>().startActivity(intent)
-        } catch (e: Exception) {
-            Log.e("ElderlyViewModel", "Failed to start Call: ${e.message}")
+        if (_emergencyContacts.value.isEmpty()) {
+            startLocalAlarm()
         }
+    }
+
+    fun startLocalAlarm() {
+        if (isLocalAlarmActive) return
+        isLocalAlarmActive = true
+        try {
+            val alert: Uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+            mediaPlayer = MediaPlayer.create(getApplication(), alert)
+            mediaPlayer?.isLooping = true
+            mediaPlayer?.start()
+        } catch (e: Exception) {
+            Log.e("ElderlyViewModel", "Error playing local alarm: ${e.message}")
+        }
+    }
+
+    fun stopLocalAlarm() {
+        isLocalAlarmActive = false
+        mediaPlayer?.stop()
+        mediaPlayer?.release()
+        mediaPlayer = null
     }
 
     fun toggleEmergency() {
         if (isEmergencyActive) {
-            // Option to reset state if already active
             isEmergencyActive = false
+            updateStatus("Safe")
         } else {
-            // Manual trigger starts the same process as audio detection
-            triggerEmergency()
+            confirmEmergency()
         }
     }
 
-    fun updateProfile(name: String, address: String, contact: String) {
-        authViewModel.currentUser?.let { user ->
-            authViewModel.updateUser(
-                user.copy(
-                    name = name,
-                    address = address,
-                    contact = contact
+    private fun updateStatus(status: String) {
+        // Handled by room/supabase later
+    }
+
+    private fun addLog(type: String, description: String) {
+        val currentElderUser = currentUser ?: return
+        viewModelScope.launch {
+            activityRepository.addLog(
+                ActivityLog(
+                    userId = currentElderUser.id,
+                    type = type,
+                    description = description
                 )
             )
+        }
+    }
+
+    fun updateProfile(name: String, caregiverName: String, address: String, contact: String, caregiverPhone: String) {
+        viewModelScope.launch {
+            currentUser?.let { user ->
+                authViewModel.updateUser(
+                    user.copy(
+                        fullName = name,
+                        address = address,
+                        phoneNumber = contact,
+                        caregiverName = caregiverName,
+                        caregiverPhoneNumber = caregiverPhone
+                    )
+                )
+            }
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        try {
+            getApplication<Application>().unregisterReceiver(emergencyReceiver)
+        } catch (e: Exception) {
+            Log.e("ElderlyViewModel", "Error unregistering receiver: ${e.message}")
         }
     }
 }

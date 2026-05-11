@@ -1,6 +1,8 @@
 package com.example.saferhouseui
 
 import android.Manifest
+import android.os.Build
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.compose.setContent
@@ -24,15 +26,21 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.saferhouseui.data.model.*
+import com.example.saferhouseui.data.repository.ActivityRepository
+import com.example.saferhouseui.data.repository.EmergencyContactRepository
+import com.example.saferhouseui.data.repository.UserRepository
 import com.example.saferhouseui.ui.screens.*
 import com.example.saferhouseui.ui.theme.PrimaryTeal
 import com.example.saferhouseui.ui.theme.SaferHouseUITheme
 
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.saferhouseui.service.SafetyMonitoringService
 import com.example.saferhouseui.viewmodel.AuthViewModel
 import com.example.saferhouseui.viewmodel.CaregiverViewModel
 import com.example.saferhouseui.viewmodel.ElderlyViewModel
 import com.example.saferhouseui.viewmodel.UserPreferenceViewModel
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
     private val requestPermissionLauncher = registerForActivityResult(
@@ -40,7 +48,7 @@ class MainActivity : AppCompatActivity() {
     ) { permissions ->
         val allGranted = permissions.entries.all { it.value }
         if (allGranted) {
-            // Permissions granted
+            android.util.Log.d("MainActivity", "All permissions granted")
         }
     }
 
@@ -51,13 +59,25 @@ class MainActivity : AppCompatActivity() {
         checkAndRequestPermissions()
 
         setContent {
+            val app = application as SaferHouseApplication
+            val activityRepository = ActivityRepository(app.database.activityLogDao())
+            val userRepository = UserRepository(app.database.userDao())
+            val emergencyContactRepository = EmergencyContactRepository(app.database.emergencyContactDao())
+            
             val prefViewModel: UserPreferenceViewModel = viewModel()
-            val authViewModel: AuthViewModel = viewModel()
+            val authViewModel: AuthViewModel = viewModel(
+                factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                    @Suppress("UNCHECKED_CAST")
+                    override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                        return AuthViewModel(application, userRepository) as T
+                    }
+                }
+            )
             val elderlyViewModel: ElderlyViewModel = viewModel(
                 factory = object : androidx.lifecycle.ViewModelProvider.Factory {
                     @Suppress("UNCHECKED_CAST")
                     override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-                        return ElderlyViewModel(application, authViewModel) as T
+                        return ElderlyViewModel(application, authViewModel, activityRepository, emergencyContactRepository) as T
                     }
                 }
             )
@@ -71,6 +91,25 @@ class MainActivity : AppCompatActivity() {
             )
 
             SaferHouseUITheme {
+                val currentUser by authViewModel.currentUser.collectAsState()
+                
+                LaunchedEffect(currentUser) {
+                    val user = currentUser
+                    val hasMicPermission = ContextCompat.checkSelfPermission(
+                        this@MainActivity, 
+                        Manifest.permission.RECORD_AUDIO
+                    ) == PackageManager.PERMISSION_GRANTED
+                    
+                    if (user != null && hasMicPermission && 
+                        (user.role.equals("ELDERLY", ignoreCase = true) || user.role.equals("ELDER", ignoreCase = true))) {
+                        val intent = Intent(this@MainActivity, SafetyMonitoringService::class.java)
+                        ContextCompat.startForegroundService(this@MainActivity, intent)
+                    } else {
+                        val intent = Intent(this@MainActivity, SafetyMonitoringService::class.java)
+                        stopService(intent)
+                    }
+                }
+
                 Box {
                     AppNavigation(
                         prefViewModel = prefViewModel,
@@ -88,11 +127,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkAndRequestPermissions() {
-        val permissions = arrayOf(
+        val permissions = mutableListOf(
             Manifest.permission.SEND_SMS,
             Manifest.permission.CALL_PHONE,
-            Manifest.permission.RECORD_AUDIO
-        )
+            Manifest.permission.RECORD_AUDIO,
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ).apply {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }.toTypedArray()
         
         val missingPermissions = permissions.filter {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
@@ -121,28 +166,6 @@ fun LoadingOverlay() {
     }
 }
 
-// Simple Data Class for our Demo User
-data class UserProfile(
-    val email: String,
-    val password: String,
-    var role: String? = null,
-    var name: String = "",
-    var address: String = "",
-    var contact: String = "",
-    val managedElders: MutableList<ElderlyMember> = mutableListOf()
-)
-
-data class ElderlyMember(
-    val id: String,
-    val name: String,
-    val age: String = "",
-    val address: String = "",
-    val phoneNumber: String = "09XXXXXXXXX",
-    val batteryLevel: Int = 100,
-    val status: String = "Safe",
-    val lastSeen: String = "Just now"
-)
-
 @Composable
 fun AppNavigation(
     prefViewModel: UserPreferenceViewModel,
@@ -151,7 +174,8 @@ fun AppNavigation(
     elderlyViewModel: ElderlyViewModel
 ) {
     val navController = rememberNavController()
-    val currentUser = authViewModel.currentUser
+    val currentUser by authViewModel.currentUser.collectAsState()
+    val scope = rememberCoroutineScope()
 
     NavHost(navController = navController, startDestination = "login") {
         composable("login") {
@@ -159,12 +183,12 @@ fun AppNavigation(
                 authViewModel = authViewModel,
                 onNavigateToRegister = { navController.navigate("register") },
                 onNavigateToForgotPassword = { navController.navigate("forgot_password") },
-                onNavigateToDashboard = { email ->
-                    val user = authViewModel.users.find { it.email == email }
-                    if (user != null) {
-                        val route = when (user.role) {
+                onNavigateToDashboard = { selectedEmail ->
+                    val user = currentUser
+                    if (user != null && user.email.equals(selectedEmail, ignoreCase = true)) {
+                        val route = when (user.role.lowercase()) {
                             "caregiver" -> "caregiver_dashboard"
-                            "elder" -> "elderly_dashboard"
+                            "elderly", "elder" -> "elderly_dashboard"
                             else -> "role"
                         }
                         navController.navigate(route) {
@@ -177,9 +201,11 @@ fun AppNavigation(
         composable("register") {
             RegisterScreen(
                 onNavigateToLogin = { navController.navigate("login") },
-                onUserCreated = { email: String, password: String ->
-                    authViewModel.register(email, password)
-                    navController.navigate("role")
+                onUserCreated = { email, password ->
+                    scope.launch {
+                        authViewModel.register(email, "New User", "ELDERLY")
+                        navController.navigate("role")
+                    }
                 }
             )
         }
@@ -207,15 +233,17 @@ fun AppNavigation(
             SetupScreen(
                 role = role,
                 onNavigateBack = { navController.popBackStack() },
-                onComplete = { name, age, address, contact ->
-                    if (role == "caregiver") {
-                        caregiverViewModel.updateProfile(name, address, contact)
-                    } else {
-                        elderlyViewModel.updateProfile(name, address, contact)
-                    }
-                    authViewModel.logout()
-                    navController.navigate("login") {
-                        popUpTo(0) { inclusive = true }
+                onComplete = { name, caregiverName, address, contact, caregiverPhone ->
+                    scope.launch {
+                        if (role == "caregiver") {
+                            caregiverViewModel.updateProfile(name, address, contact)
+                        } else {
+                            elderlyViewModel.updateProfile(name, caregiverName, address, contact, caregiverPhone)
+                        }
+                        authViewModel.logout()
+                        navController.navigate("login") {
+                            popUpTo(0) { inclusive = true }
+                        }
                     }
                 }
             )
@@ -223,10 +251,10 @@ fun AppNavigation(
         composable("caregiver_dashboard") {
             currentUser?.let { user ->
                 CaregiverDashboardScreen(
-                    caregiverName = user.name,
+                    caregiverName = user.fullName,
                     caregiverAddress = user.address,
-                    caregiverContact = user.contact,
-                    managedElders = user.managedElders,
+                    caregiverContact = user.phoneNumber,
+                    managedElders = emptyList(), // Should be fetched from CaregiverViewModel
                     currentFontSize = prefViewModel.fontSize,
                     onFontSizeChange = { prefViewModel.setAppFontSize(it) },
                     onUpdateProfile = { name, address, contact ->
@@ -238,6 +266,13 @@ fun AppNavigation(
                     onRemoveElder = { elderId ->
                         caregiverViewModel.removeElderlyMember(elderId)
                     },
+                    onUpdateCheckIn = { elderId, days, time ->
+                        caregiverViewModel.updateCheckInSchedule(elderId, days, time)
+                    },
+                    onUpdateEmergencyContacts = { elderId, contacts ->
+                        caregiverViewModel.updateEmergencyContacts(elderId, contacts)
+                    },
+                    activityLogs = emptyList(), // Should be fetched from CaregiverViewModel
                     onLogout = {
                         authViewModel.logout()
                         navController.navigate("login") {
@@ -250,18 +285,24 @@ fun AppNavigation(
         composable("elderly_dashboard") {
             currentUser?.let { user ->
                 ElderlyDashboardScreen(
-                    elderName = user.name,
+                    elderName = user.fullName,
                     elderAddress = user.address,
-                    elderContact = user.contact,
-                    caregiverName = "Juan Dela Cruz", // Mock for now
+                    elderContact = user.phoneNumber,
+                    caregiverName = user.caregiverName ?: "Not Assigned",
+                    caregiverAddress = "Location pending",
+                    caregiverContact = user.caregiverPhoneNumber ?: "N/A",
                     currentLanguage = prefViewModel.language,
                     currentFontSize = prefViewModel.fontSize,
                     isEmergencyActive = elderlyViewModel.isEmergencyActive,
                     isConfirmationDialogOpen = elderlyViewModel.isConfirmationDialogOpen,
+                    isCheckInPending = elderlyViewModel.isCheckInPending,
+                    isLocalAlarmActive = elderlyViewModel.isLocalAlarmActive,
                     countdownValue = elderlyViewModel.countdownValue,
                     onEmergencyToggle = { elderlyViewModel.toggleEmergency() },
                     onConfirmEmergency = { elderlyViewModel.confirmEmergency() },
                     onCancelEmergency = { elderlyViewModel.cancelEmergency() },
+                    onCheckInResponse = { elderlyViewModel.respondToCheckIn() },
+                    onStopAlarm = { elderlyViewModel.stopLocalAlarm() },
                     onLanguageChange = { prefViewModel.setAppLanguage(it) },
                     onFontSizeChange = { prefViewModel.setAppFontSize(it) },
                     onLogout = {

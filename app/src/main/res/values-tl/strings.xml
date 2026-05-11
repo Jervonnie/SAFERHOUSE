@@ -109,4 +109,9 @@
     <string name="close">Isara</string>
     <string name="connection_code">Code para sa Koneksyon</string>
     <string name="share_code_msg">Ibigay ang 6-digit code na ito sa iyong tagapag-alaga upang sila ay makakonekta sa iyong account.</string>
+    <string name="fall_detected">Paunawa sa Emergency!</string>
+    <string name="are_you_okay">Ayos ka lang ba?</string>
+    <string name="sending_alert_in">Ipinapadala ang Alerto sa loob ng</string>
+    <string name="seconds">Segundo</string>
+    <string name="im_okay">Oo, Ayos lang Ako</string>
 </resources>

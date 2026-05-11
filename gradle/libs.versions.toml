@@ -15,9 +15,16 @@ materialIconsExtended = "1.7.8"
 room = "2.8.4"
 supabase = "3.6.0"
 kotlinxSerialization = "1.11.0"
+kotlinxCoroutines = "1.10.1"
 ksp = "2.3.7"
+tensorflowLiteAudio = "0.4.4"
+vosk = "0.3.47"
+playServicesLocation = "21.3.0"
 
 [libraries]
+vosk-android = { group = "com.alphacephei", name = "vosk-android", version.ref = "vosk" }
+tensorflow-lite-audio = { group = "org.tensorflow", name = "tensorflow-lite-task-audio", version.ref = "tensorflowLiteAudio" }
+tensorflow-support = { group = "org.tensorflow", name = "tensorflow-lite-support", version.ref = "tensorflowLiteAudio" }
 androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
@@ -25,6 +32,7 @@ supabase-postgrest = { group = "io.github.jan-tennert.supabase", name = "postgre
 supabase-realtime = { group = "io.github.jan-tennert.supabase", name = "realtime-kt", version.ref = "supabase" }
 supabase-auth = { group = "io.github.jan-tennert.supabase", name = "auth-kt", version.ref = "supabase" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
+kotlinx-coroutines-play-services = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-play-services", version.ref = "kotlinxCoroutines" }
 
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -44,6 +52,7 @@ androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-te
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 androidx-compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended", version.ref = "materialIconsExtended" }
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
+play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

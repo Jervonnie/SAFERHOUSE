@@ -1,8 +1,10 @@
 package com.example.saferhouseui.ui.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.Cake
@@ -14,31 +16,31 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.saferhouseui.ui.theme.*
-
-import androidx.compose.ui.res.stringResource
 import com.example.saferhouseui.R
-
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import com.example.saferhouseui.ui.theme.*
+import kotlinx.coroutines.launch
 
 @Composable
 fun SetupScreen(
     role: String,
     onNavigateBack: () -> Unit,
-    onComplete: (String, String, String, String) -> Unit
+    onComplete: (String, String, String, String, String) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
     var age by remember { mutableStateOf("") }
     var address by remember { mutableStateOf("") }
     var contact by remember { mutableStateOf("") }
+    var caregiverName by remember { mutableStateOf("") }
+    var caregiverPhone by remember { mutableStateOf("") }
     val scrollState = rememberScrollState()
+    val scope = rememberCoroutineScope()
 
     val roleTitle = if (role == "elder") stringResource(R.string.elder_setup) else stringResource(R.string.caregiver_setup)
 
@@ -150,13 +152,50 @@ fun SetupScreen(
                         keyboardType = KeyboardType.Number
                     )
 
+                    if (role == "elder") {
+                        Spacer(modifier = Modifier.height(18.dp))
+                        Text(
+                            text = "PRIMARY CAREGIVER",
+                            color = PrimaryTeal,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.fillMaxWidth().padding(start = 4.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        SleekInputField(
+                            value = caregiverName,
+                            onValueChange = { caregiverName = it },
+                            placeholder = "Caregiver Full Name",
+                            icon = Icons.Default.Badge
+                        )
+                        
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        SleekInputField(
+                            value = caregiverPhone,
+                            onValueChange = { 
+                                if (it.all { char -> char.isDigit() }) {
+                                    caregiverPhone = it 
+                                }
+                            },
+                            placeholder = "Caregiver Contact Number",
+                            icon = Icons.Default.Phone,
+                            keyboardType = KeyboardType.Number
+                        )
+                    }
+
                     Spacer(modifier = Modifier.height(40.dp))
 
                     Button(
                         onClick = { 
                             val isAgeValid = if (role == "elder") age.isNotBlank() else true
-                            if (name.isNotBlank() && isAgeValid && address.isNotBlank() && contact.isNotBlank()) {
-                                onComplete(name, age, address, contact)
+                            val isCaregiverValid = if (role == "elder") caregiverName.isNotBlank() && caregiverPhone.isNotBlank() else true
+                            
+                            if (name.isNotBlank() && isAgeValid && address.isNotBlank() && contact.isNotBlank() && isCaregiverValid) {
+                                scope.launch {
+                                    onComplete(name, caregiverName, address, contact, caregiverPhone)
+                                }
                             }
                         },
                         modifier = Modifier
@@ -168,7 +207,9 @@ fun SetupScreen(
                         ),
                         shape = RoundedCornerShape(16.dp),
                         elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp),
-                        enabled = name.isNotBlank() && (if (role == "elder") age.isNotBlank() else true) && address.isNotBlank() && contact.isNotBlank()
+                        enabled = name.isNotBlank() && 
+                                 (if (role == "elder") age.isNotBlank() && caregiverName.isNotBlank() && caregiverPhone.isNotBlank() else true) && 
+                                 address.isNotBlank() && contact.isNotBlank()
                     ) {
                         Text(
                             text = stringResource(R.string.finish_setup),
